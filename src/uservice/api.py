@@ -14,11 +14,13 @@ class JobServer(Flask):
         super(JobServer, self).__init__(name)
         # Rules for human readables:
         self.add_url_rule(
+            # GET human readable list of jobs
             '/jobs/',
             view_func=ListJobsHumanReadable.as_view('listjobshr'),
             methods=["GET"]
             )
         self.add_url_rule(
+            # GET human readable job status
             '/jobs/<job_id>/',
             view_func=JobStatusHumanReadable.as_view('jobstatushr'),
             methods=["GET"]
@@ -43,16 +45,16 @@ class JobServer(Flask):
             methods=["GET", "PUT"]
             )
         self.add_url_rule(
-            # Should be a GET PUT pair
+            # GET lock status, PUT lock in place, and DELETE lock
             '/rest_api/<version>/jobs/<job_id>/lock/',
             view_func=JobLock.as_view('joblock'),
-            methods=["GET", "PUT"]
+            methods=["GET", "PUT", "DELETE"]
             )
         self.add_url_rule(
             # PUT to claim job
             '/rest_api/<version>/jobs/<job_id>/claim/',
             view_func=JobClaim.as_view('jobclaim'),
-            methods=["PUT"]
+            methods=["GET", "PUT"]
             )
         self.add_url_rule(
             # GET to get data to process, PUT to deliver when done.

@@ -1,72 +1,60 @@
 """ Basic views for REST api that require job id
 """
 from flask import jsonify, request, abort
-from basic_views import BasicView, AuthView
+from basic_views import BasicView
 
 
 class BasicJobView(BasicView):
     """Base class for views that require job id"""
     def get(self, version, job_id):
-        """GET, a commin sanity checking"""
-        if version not in ['v1', 'v2', 'v3', 'v4']:
-            abort(404)
+        """GET"""
+        self._check_version(version)
 
-        auth = request.args.get('auth')
-        if not self._authenticate(auth):
-            abort(401)
-        else:
+        if self._authenticate():
             return self._get_view(version, job_id)
 
     def _get_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
         return jsonify(Version=version, ID=job_id)
 
-    def put(self, version, job_id):
-        if version not in ['v1', 'v2', 'v3', 'v4']:
-            abort(404)
 
-        auth = request.args.get('auth')
-        if not self._authenticate(auth):
-            abort(401)
-        else:
-            return self._put_view(version, job_id)
-
-    def _put_view(self, version, job_id):
-        """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version, ID=job_id, Call="PUT")
-
-
-class AuthJobView(AuthView):
+class AuthJobView(BasicJobView):
     """The class which views requiring authentication and job id can inherit
     from."""
-    def get(self, version, job_id):
-        """GET, a common sanity checking"""
-        if version not in ['v1', 'v2', 'v3', 'v4']:
-            abort(404)
+    def put(self, version, job_id):
+        """PUT"""
+        self._check_version(version)
 
-        auth = request.args.get('auth')
-        if not self._authenticate(auth):
-            abort(401)
-        else:
-            return self._get_view(version, job_id)
+        if self._authenticate():
+            return self._put_view(version, job_id)
+
+    def delete(self, version, job_id):
+        """DELETE"""
+        self._check_version(version)
+
+        if not self._authenticate():
+            return self._delete_view(version, job_id)
 
     def _get_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
         return jsonify(Version=version, ID=job_id)
 
-    def put(self, version, job_id):
-        if version not in ['v1', 'v2', 'v3', 'v4']:
-            abort(404)
-
-        auth = request.args.get('auth')
-        if not self._authenticate(auth):
-            abort(401)
-        else:
-            return self._put_view(version, job_id)
-
     def _put_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
         return jsonify(Version=version, ID=job_id, Call="PUT")
+
+    def _delete_view(self, version, job_id):
+        """Dummy method which should be over loaded by derived classes"""
+        return jsonify(Version=version, ID=job_id, Call="DELETE")
+
+    def _authenticate(self):
+        """Dummy method that should be made more intelligent."""
+        auth = request.args.get('auth')
+
+        if auth is None:
+            abort(401)
+        else:
+            return True
 
 
 class JobData(AuthJobView):
