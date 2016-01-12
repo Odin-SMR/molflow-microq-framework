@@ -1,5 +1,6 @@
 # microService framework for data processing
 
+
 ## Intent
 A framework for distributing jobs to workers.
 
@@ -8,6 +9,7 @@ communication will be over REST with some kind of authentication for those
 calls that would benefit from it. Some calls are also made for humans to use
 for getting statuses and performing administration.
 
+
 ## REST hierarchy
 
 ### /rest/jobs/
@@ -15,7 +17,6 @@ for getting statuses and performing administration.
     - available
     - claimed (message, e.g. percent done, time claimed, claimant id etc.)
     - done (message, e.g. delivery time, deliverer id etc.)
-
 
 ### /rest/jobs/fetch/
     URL for getting the next job in the "queue" from the server.
@@ -47,7 +48,6 @@ for getting statuses and performing administration.
 
 ### /rest/jobs/<id>/data/
     URL for getting the data (or URLs to data) needed to start processing.
-
 
 
 ### /rest/jobs/<id>/claim/
