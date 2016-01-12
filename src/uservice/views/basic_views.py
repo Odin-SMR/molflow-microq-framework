@@ -21,6 +21,20 @@ class BasicView(MethodView):
         """Dummy method which should be over loaded by derived classes"""
         return jsonify(Version=version)
 
+    def put(self, version):
+        if version not in ['v1', 'v2', 'v3', 'v4']:
+            abort(404)
+
+        auth = request.args.get('auth')
+        if not self._authenticate(auth):
+            abort(401)
+        else:
+            return self._put_view(version)
+
+    def _put_view(self, version):
+        """Dummy method which should be over loaded by derived classes"""
+        return jsonify(Version=version, Call="PUT")
+
     def _authenticate(self, auth):
         """Dummy method that should be over loaded by derived classes that
         support/require authentication."""

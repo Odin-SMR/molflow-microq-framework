@@ -3,9 +3,8 @@
 from flask import Flask
 from uservice.views.basic_views import (ListJobs, ListJobsHumanReadable,
                                         FetchNextJob)
-from uservice.views.job_views import (JobClaim, JobStatus, JobStatusUpdate,
-                                      JobStatusHumanReadable, JobLock,
-                                      JobUnlock, JobData, JobDeliver)
+from uservice.views.job_views import (JobClaim, JobStatus, JobData, JobLock,
+                                      JobStatusHumanReadable)
 from os import environ
 
 
@@ -13,49 +12,53 @@ class JobServer(Flask):
     """The main app running the job server"""
     def __init__(self, name):
         super(JobServer, self).__init__(name)
+        # Rules for human readables:
         self.add_url_rule(
             '/jobs/',
-            view_func=ListJobsHumanReadable.as_view('listjobshr')
-            )
-        self.add_url_rule(
-            '/rest_api/<version>/jobs/',
-            view_func=ListJobs.as_view('listjobs')
-            )
-        self.add_url_rule(
-            '/rest_api/<version>/jobs/fetch/',
-            view_func=FetchNextJob.as_view('fetchnextjob')
+            view_func=ListJobsHumanReadable.as_view('listjobshr'),
+            methods=["GET"]
             )
         self.add_url_rule(
             '/jobs/<job_id>/',
-            view_func=JobStatusHumanReadable.as_view('jobstatushr')
+            view_func=JobStatusHumanReadable.as_view('jobstatushr'),
+            methods=["GET"]
+            )
+        # Rules for worker access:
+        self.add_url_rule(
+            # GET list of jobs
+            '/rest_api/<version>/jobs/',
+            view_func=ListJobs.as_view('listjobs'),
+            methods=["GET"]
             )
         self.add_url_rule(
+            # GET next job URI etc.
+            '/rest_api/<version>/jobs/fetch/',
+            view_func=FetchNextJob.as_view('fetchnextjob'),
+            methods=["GET"]
+            )
+        self.add_url_rule(
+            # GET and PUT job status
             '/rest_api/<version>/jobs/<job_id>/',
-            view_func=JobStatus.as_view('jobstatus')
+            view_func=JobStatus.as_view('jobstatus'),
+            methods=["GET", "PUT"]
             )
         self.add_url_rule(
-            '/rest_api/<version>/jobs/<job_id>/status/update/',
-            view_func=JobStatusUpdate.as_view('jobstatusupdate')
-            )
-        self.add_url_rule(
+            # Should be a GET PUT pair
             '/rest_api/<version>/jobs/<job_id>/lock/',
-            view_func=JobLock.as_view('joblock')
+            view_func=JobLock.as_view('joblock'),
+            methods=["GET", "PUT"]
             )
         self.add_url_rule(
-            '/rest_api/<version>/jobs/<job_id>/unlock/',
-            view_func=JobUnlock.as_view('jobunlock')
-            )
-        self.add_url_rule(
+            # PUT to claim job
             '/rest_api/<version>/jobs/<job_id>/claim/',
-            view_func=JobClaim.as_view('jobclaim')
+            view_func=JobClaim.as_view('jobclaim'),
+            methods=["PUT"]
             )
         self.add_url_rule(
+            # GET to get data to process, PUT to deliver when done.
             '/rest_api/<version>/jobs/<job_id>/data/',
-            view_func=JobData.as_view('jobdata')
-            )
-        self.add_url_rule(
-            '/rest_api/<version>/jobs/<job_id>/deliver/',
-            view_func=JobDeliver.as_view('jobdeliver')
+            view_func=JobData.as_view('jobdata'),
+            methods=["GET", "PUT"]
             )
 
 
