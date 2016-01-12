@@ -13,10 +13,10 @@ for getting statuses and performing administration.
 ## REST hierarchy
 
 ### /rest/jobs/
-    URL for getting a (human readable?) list of jobs with id and statuses:
-    - available
-    - claimed (message, e.g. percent done, time claimed, claimant id etc.)
-    - done (message, e.g. delivery time, deliverer id etc.)
+  URL for getting a (human readable?) list of jobs with id and statuses:
+  - available
+  - claimed (message, e.g. percent done, time claimed, claimant id etc.)
+  - done (message, e.g. delivery time, deliverer id etc.)
 
 ### /rest/jobs/fetch/
     URL for getting the next job in the "queue" from the server.
