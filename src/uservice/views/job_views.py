@@ -1,4 +1,4 @@
-""" Basic views for REST api
+""" Basic views for REST api that require job id
 """
 from flask import jsonify, request, abort
 from basic_views import BasicView, AuthView
@@ -15,7 +15,7 @@ class BasicJobView(BasicView):
         if not self._authenticate(auth):
             abort(401)
         else:
-            return self._get_view(version)
+            return self._get_view(version, job_id)
 
     def _get_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
@@ -43,9 +43,9 @@ class AuthJobView(AuthView):
 
 class JobStatus(BasicJobView):
     """Get jobstatus as JSON object"""
-    def _get_view(self, version):
+    def _get_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version)
+        return jsonify(Version=version, ID=job_id)
 
 
 class JobStatusHumanReadable(BasicJobView):

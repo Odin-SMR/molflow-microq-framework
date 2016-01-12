@@ -2,6 +2,8 @@
 
 from flask import Flask
 from uservice.views.basic_views import BasicView, AuthView
+from uservice.views.job_views import (JobClaim, JobStatus,
+                                      JobStatusHumanReadable,)
 from os import environ
 
 
@@ -16,6 +18,18 @@ class JobServer(Flask):
         self.add_url_rule(
             '/rest_api/<version>/jobs/authtest/',
             view_func=AuthView.as_view('authview')
+            )
+        self.add_url_rule(
+            '/rest_api/<version>/jobs/<job_id>/',
+            view_func=JobStatus.as_view('jobstatus')
+            )
+        self.add_url_rule(
+            '/rest_api/<version>/jobs/<job_id>/status/',
+            view_func=JobStatusHumanReadable.as_view('jobstatushr')
+            )
+        self.add_url_rule(
+            '/rest_api/<version>/jobs/<job_id>/claim/',
+            view_func=JobClaim.as_view('jobclaim')
             )
 
 
