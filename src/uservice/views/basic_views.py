@@ -12,7 +12,7 @@ class BasicView(MethodView):
             abort(404)
 
         auth = request.args.get('auth')
-        if self._authenticate(auth):
+        if not self._authenticate(auth):
             abort(401)
         else:
             return self._get_view(version)
@@ -27,7 +27,7 @@ class BasicView(MethodView):
         return True
 
 
-class AuthView(BasicView):
+class AuthView( BasicView):
     """The class which views requiring authentication can inherit from."""
     def _authenticate(self, auth):
         """Dummy method that should be made more intelligent."""
