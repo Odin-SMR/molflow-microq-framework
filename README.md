@@ -3,10 +3,12 @@
 ## REST hierarchy
 
 - /rest/jobs/
+
     URL for getting a (human readable?) list of jobs with id and statuses:
     - available
     - claimed (message, e.g. percent done, time claimed, claimant id etc.)
     - done (message, e.g. delivery time, deliverer id etc.)
+
 
 - /rest/jobs/fetch/
     URL for getting the next job in the "queue" from the server.
@@ -14,15 +16,20 @@
 
     Result is URL for claiming, getting data, reporting status etc.
 
+
 - /rest/jobs/<id>/
+
     Status of job <id>, also URLs for getting data to process, claiming etc.
     as applicable. Probably not human readable.
 
+
 - /rest/jobs/<id>/status/
+
     Status of job <id>, also URLs for getting data to process, claiming etc.
     as applicable. Human readable.
 
 - /rest/jobs/<id>/status/update/
+
     URL for updating status of job <id>. Some sort of authentication might be
     implemeted, such as only allowing claims where a proper key is supplied via
     e.g. ?key=.
@@ -33,8 +40,12 @@
 
     Result is some sort of status confirmation reporting success or failure.
 
+
 - /rest/jobs/<id>/data/
+
     URL for getting the data (or URLs to data) needed to start processing.
+
+
 
 - /rest/jobs/<id>/claim/
     URL for claiming a job. Some sort of authentication might be implemeted,
@@ -48,7 +59,9 @@
     Result is some sort of status confirmation (and URL to data..?) if the
     job can be claimed, otherwise some negative confirmation/http status code.
 
+
 - /rest/jobs/<id>/lock/
+
     URL for locking a job, e.g. when claimed. Some sort of authentication
     might be implemeted, such as only allowing locking where a proper key is
     supplied via e.g. ?key=.
@@ -57,7 +70,9 @@
 
     Result is some sort of status confirmation reporting success or failure.
 
+
 - /rest/jobs/<id>/unlock/
+
     URL for unlocking a job, e.g. when the Worker that claimed it is suspected
     to have crashed. Some sort of authentication might be implemeted, such as
     only allowing claims where a proper key is supplied via e.g. ?key=.
@@ -67,7 +82,9 @@
 
     Result is some sort of status confirmation reporting success or failure.
 
+
 - /rest/jobs/<id>/deliver/
+
     URL for delivering a job, e.g. when claimed. Some sort of authentication
     might be implemeted, such as only allowing claims where a proper key is
     supplied via e.g. ?key=.
