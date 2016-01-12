@@ -12,6 +12,9 @@ for getting statuses and performing administration.
 
 ## REST hierarchy
 
+Below is a description of the proposed REST hierarchy.
+
+
 ### /rest/jobs/
 
 URL for getting a (human readable?) list of jobs with id and statuses:
