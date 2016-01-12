@@ -25,3 +25,11 @@ class BasicView(MethodView):
         """Dummy method that should be over loaded by derived classes that
         support/require authentication."""
         return True
+
+
+class AuthView(BasicView):
+    """The class which views requiring authentication can inherit from."""
+    def _authenticate(self, auth):
+        """Dummy method that should be over loaded by derived classes that
+        support/require authentication."""
+        return True
