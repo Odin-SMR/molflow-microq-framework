@@ -1,1 +1,1 @@
-"""uservice"""
+"""uservice.views"""
