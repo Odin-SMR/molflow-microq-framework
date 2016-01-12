@@ -1,7 +1,7 @@
 """A simple datamodel implementation"""
 
 from flask import Flask
-from uservice.basic_views import BasicView, AuthView
+from uservice.views.basic_views import BasicView, AuthView
 from os import environ
 
 
