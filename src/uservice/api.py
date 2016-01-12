@@ -14,11 +14,11 @@ class JobServer(Flask):
     def __init__(self, name):
         super(JobServer, self).__init__(name)
         self.add_url_rule(
-            '/rest_api/<version>/jobs/',
+            '/jobs/',
             view_func=ListJobsHumanReadable.as_view('listjobshr')
             )
         self.add_url_rule(
-            '/rest_api/<version>/jobs/list/',
+            '/rest_api/<version>/jobs/',
             view_func=ListJobs.as_view('listjobs')
             )
         self.add_url_rule(
@@ -26,11 +26,11 @@ class JobServer(Flask):
             view_func=FetchNextJob.as_view('fetchnextjob')
             )
         self.add_url_rule(
-            '/rest_api/<version>/jobs/<job_id>/',
+            '/jobs/<job_id>/',
             view_func=JobStatusHumanReadable.as_view('jobstatushr')
             )
         self.add_url_rule(
-            '/rest_api/<version>/jobs/<job_id>/status/',
+            '/rest_api/<version>/jobs/<job_id>/',
             view_func=JobStatus.as_view('jobstatus')
             )
         self.add_url_rule(
