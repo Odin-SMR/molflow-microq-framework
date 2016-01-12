@@ -27,7 +27,7 @@ class BasicView(MethodView):
         return True
 
 
-class AuthView( BasicView):
+class AuthView(BasicView):
     """The class which views requiring authentication can inherit from."""
     def _authenticate(self, auth):
         """Dummy method that should be made more intelligent."""
