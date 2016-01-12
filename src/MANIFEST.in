@@ -1,0 +1,2 @@
+recursive-include odinapi/templates *
+recursive-include odinapi/static *
