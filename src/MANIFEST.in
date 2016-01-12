@@ -1,2 +1,2 @@
-recursive-include odinapi/templates *
-recursive-include odinapi/static *
+recursive-include uservice/templates *
+recursive-include uservice/static *
