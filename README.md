@@ -36,10 +36,19 @@ Below is a description of the proposed REST hierarchy.
 
 ### /rest/jobs/
 
-URL for getting a (human readable?) list of jobs with id and statuses:
+URL for getting a human readable list of jobs with id and statuses:
 - available
 - claimed (message, e.g. percent done, time claimed, claimant id etc.)
 - done (message, e.g. delivery time, deliverer id etc.)
+
+
+### /rest/jobs/list/
+
+URL for getting a non-human readable list of jobs with id and statuses:
+- available
+- claimed (message, e.g. percent done, time claimed, claimant id etc.)
+- done (message, e.g. delivery time, deliverer id etc.)
+
 
 ### /rest/jobs/fetch/
 
@@ -52,13 +61,13 @@ Result is URL for claiming, getting data, reporting status etc.
 ### /rest/jobs/<id>/
 
 URL for getting the status of job <id>, also returns URLs for getting data to
-process, claiming etc. as applicable. Probably not human readable.
+process, claiming etc. as applicable. Human readable.
 
 
 ### /rest/jobs/<id>/status/
 
 URL for getting status of job <id>, also returns URLs for getting data to
-process, claiming etc. as applicable. Human readable.
+process, claiming etc. as applicable. Not human readable.
 
 ### /rest/jobs/<id>/status/update/
 
