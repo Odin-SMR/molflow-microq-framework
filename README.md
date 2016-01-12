@@ -14,19 +14,19 @@ for getting statuses and performing administration.
 
 - **Server:** The central unit which keeps track of what Jobs need to be run.
 - **Worker:** A micro service that periodically asks the server for a new job,
-processes it and delivers the results to the server. All Workers should be
-identifiable in order to make problems traceable.
+  processes it and delivers the results to the server. All Workers should be
+  identifiable in order to make problems traceable.
 - **Data base:** Here used to mean a MySQL data base and the actual file tree
-where results end up after delivery. The communication with the Data base is
-done via the Server, Workers have no direct access. The server uses the Data
-base and the file tree to establish what Jobs need to be done.
+  where results end up after delivery. The communication with the Data base is
+  done via the Server, Workers have no direct access. The server uses the Data
+  base and the file tree to establish what Jobs need to be done.
 - **Authentication:** Some sort of authentication should be used for calls that
-change the status of the Data base and the Job queue. Workers should use unique
-authentication in order to make problems traceable.
+  change the status of the Data base and the Job queue. Workers should use
+  unique authentication in order to make problems traceable.
 - **Job:** A work package, some files that need processing, as identified by
-the Server.
+  the Server.
 - **Delivery:** Depending on context, either the resulting new data from
-processing a Job, or the process of delivering the result to the Server.
+  processing a Job, or the process of delivering the result to the Server.
 
 
 ## REST hierarchy
