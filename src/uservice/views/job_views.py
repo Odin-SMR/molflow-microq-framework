@@ -41,6 +41,13 @@ class AuthJobView(AuthView):
         return jsonify(Version=version, ID=job_id)
 
 
+class JobData(BasicJobView):
+    """Get data needed for job"""
+    def _get_view(self, version, job_id):
+        """Dummy method which should be over loaded by derived classes"""
+        return jsonify(Version=version, ID=job_id)
+
+
 class JobStatus(BasicJobView):
     """Get jobstatus as JSON object"""
     def _get_view(self, version, job_id):
@@ -55,8 +62,36 @@ class JobStatusHumanReadable(BasicJobView):
         return jsonify(Version=version, ID=job_id)
 
 
+class JobStatusUpdate(AuthJobView):
+    """Update jobstatus"""
+    def _get_view(self, version, job_id):
+        """Dummy method which should be over loaded by derived classes"""
+        return jsonify(Version=version, ID=job_id)
+
+
 class JobClaim(AuthJobView):
     """Claim job"""
+    def _get_view(self, version, job_id):
+        """Dummy method which should be over loaded by derived classes"""
+        return jsonify(Version=version, ID=job_id)
+
+
+class JobLock(AuthJobView):
+    """Lock job"""
+    def _get_view(self, version, job_id):
+        """Dummy method which should be over loaded by derived classes"""
+        return jsonify(Version=version, ID=job_id)
+
+
+class JobUnlock(AuthJobView):
+    """Unlock job"""
+    def _get_view(self, version, job_id):
+        """Dummy method which should be over loaded by derived classes"""
+        return jsonify(Version=version, ID=job_id)
+
+
+class JobDeliver(AuthJobView):
+    """Deliver results from completed job"""
     def _get_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
         return jsonify(Version=version, ID=job_id)

@@ -36,3 +36,15 @@ class AuthView(BasicView):
             return False
         else:
             return True
+
+
+class ListJobs(BasicView):
+    """View for listing jobs as JSON object"""
+
+
+class ListJobsHumanReadable(BasicView):
+    """View for listing jobs as html"""
+
+
+class FetchNextJob(BasicView):
+    """View for fetching next job from queue"""
