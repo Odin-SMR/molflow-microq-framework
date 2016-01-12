@@ -1,36 +1,39 @@
 # microService framework for data processing
 
+## Intent
+A framework for distributing jobs to workers.
+
+The intent is to use worker microservices that ask a server for jobs. All
+communication will be over REST with some kind of authentication for those
+calls that would benefit from it. Some calls are also made for humans to use
+for getting statuses and performing administration.
+
 ## REST hierarchy
 
-- /rest/jobs/
-
+### /rest/jobs/
     URL for getting a (human readable?) list of jobs with id and statuses:
     - available
     - claimed (message, e.g. percent done, time claimed, claimant id etc.)
     - done (message, e.g. delivery time, deliverer id etc.)
 
 
-- /rest/jobs/fetch/
-
+### /rest/jobs/fetch/
     URL for getting the next job in the "queue" from the server.
     No authentication required.
 
     Result is URL for claiming, getting data, reporting status etc.
 
 
-- /rest/jobs/<id>/
+### /rest/jobs/<id>/
+    URL for getting the status of job <id>, also returns URLs for getting data
+    to process, claiming etc. as applicable. Probably not human readable.
 
-    Status of job <id>, also URLs for getting data to process, claiming etc.
-    as applicable. Probably not human readable.
 
+### /rest/jobs/<id>/status/
+    URL for getting status of job <id>, also returns URLs for getting data to
+    process, claiming etc. as applicable. Human readable.
 
-- /rest/jobs/<id>/status/
-
-    Status of job <id>, also URLs for getting data to process, claiming etc.
-    as applicable. Human readable.
-
-- /rest/jobs/<id>/status/update/
-
+### /rest/jobs/<id>/status/update/
     URL for updating status of job <id>. Some sort of authentication might be
     implemeted, such as only allowing claims where a proper key is supplied via
     e.g. ?key=.
@@ -42,13 +45,12 @@
     Result is some sort of status confirmation reporting success or failure.
 
 
-- /rest/jobs/<id>/data/
-
+### /rest/jobs/<id>/data/
     URL for getting the data (or URLs to data) needed to start processing.
 
 
 
-- /rest/jobs/<id>/claim/
+### /rest/jobs/<id>/claim/
     URL for claiming a job. Some sort of authentication might be implemeted,
     such as only allowing claims where a proper key is supplied via e.g. ?key=.
 
@@ -61,8 +63,7 @@
     job can be claimed, otherwise some negative confirmation/http status code.
 
 
-- /rest/jobs/<id>/lock/
-
+### /rest/jobs/<id>/lock/
     URL for locking a job, e.g. when claimed. Some sort of authentication
     might be implemeted, such as only allowing locking where a proper key is
     supplied via e.g. ?key=.
@@ -72,8 +73,7 @@
     Result is some sort of status confirmation reporting success or failure.
 
 
-- /rest/jobs/<id>/unlock/
-
+### /rest/jobs/<id>/unlock/
     URL for unlocking a job, e.g. when the Worker that claimed it is suspected
     to have crashed. Some sort of authentication might be implemeted, such as
     only allowing claims where a proper key is supplied via e.g. ?key=.
@@ -84,8 +84,7 @@
     Result is some sort of status confirmation reporting success or failure.
 
 
-- /rest/jobs/<id>/deliver/
-
+### /rest/jobs/<id>/deliver/
     URL for delivering a job, e.g. when claimed. Some sort of authentication
     might be implemeted, such as only allowing claims where a proper key is
     supplied via e.g. ?key=.
@@ -99,4 +98,3 @@
     has already been delivered by another Worker, the result should still say
     success as a contingency, so that the Worker can move on and claim a new
     job.
-
