@@ -55,15 +55,3 @@ class FetchNextJob(BasicView):
 
 class ListJobs(BasicView):
     """View for listing jobs as JSON object"""
-
-
-class ListJobsHumanReadable(BasicView):
-    """View for listing jobs as html"""
-    def get(self):
-        """GET"""
-
-        return self._get_view()
-
-    def _get_view(self):
-        """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Hello="ListJobsHumanReadable")

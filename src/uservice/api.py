@@ -1,10 +1,11 @@
 """A simple datamodel implementation"""
 
 from flask import Flask
-from uservice.views.basic_views import (ListJobs, ListJobsHumanReadable,
-                                        FetchNextJob, BasicView)
-from uservice.views.job_views import (JobClaim, JobStatus, JobData, JobLock,
-                                      JobStatusHumanReadable)
+from uservice.views.basic_views import ListJobs, FetchNextJob, BasicView
+from uservice.views.job_views import JobClaim, JobStatus, JobData, JobLock
+from uservice.views.site_views import (JobStatusHumanReadable,
+                                       ListJobsHumanReadable,
+                                       ServerStatusHumanReadable)
 from os import environ
 
 
@@ -12,6 +13,7 @@ class JobServer(Flask):
     """The main app running the job server"""
     def __init__(self, name):
         super(JobServer, self).__init__(name)
+
         # Debug views:
         self.add_url_rule(
             # Debug GET, PUT, DELETE authorization
@@ -19,7 +21,14 @@ class JobServer(Flask):
             view_func=BasicView.as_view('authdebug'),
             methods=["GET", "PUT", "DELETE"]
             )
+
         # Rules for human readables:
+        self.add_url_rule(
+            # GET human readable list of jobs
+            '/',
+            view_func=ServerStatusHumanReadable.as_view('serverstatusshr'),
+            methods=["GET"]
+            )
         self.add_url_rule(
             # GET human readable list of jobs
             '/jobs/',
@@ -32,6 +41,7 @@ class JobServer(Flask):
             view_func=JobStatusHumanReadable.as_view('jobstatushr'),
             methods=["GET"]
             )
+
         # Rules for worker access:
         self.add_url_rule(
             # GET list of jobs

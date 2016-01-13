@@ -81,14 +81,3 @@ class JobLock(BasicJobView):
     def _put_view(self, version, job_id):
         """Used to set lock status"""
         return jsonify(Version=version, ID=job_id, Call="PUT")
-
-
-class JobStatusHumanReadable(BasicJobView):
-    """Get jobstatus as html"""
-    def get(self, job_id):
-        """GET"""
-        return self._get_view(job_id)
-
-    def _get_view(self, job_id):
-        """Used to get a human readable status for job"""
-        return jsonify(ID=job_id)
