@@ -1,6 +1,6 @@
 """ Basic views for REST api
 """
-from flask import jsonify, abort
+from flask import jsonify, abort, make_response
 from flask.views import MethodView
 from flask.ext.httpauth import HTTPBasicAuth
 auth = HTTPBasicAuth()
@@ -43,6 +43,10 @@ class BasicView(MethodView):
     def _check_version(self, version):
         if version not in ['v1', 'v2', 'v3', 'v4']:
             abort(404)
+
+    @auth.error_handler
+    def unauthorized():
+        return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 
 class FetchNextJob(BasicView):

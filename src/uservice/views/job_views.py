@@ -1,9 +1,7 @@
 """ Basic views for REST api that require job id
 """
 from flask import jsonify
-from basic_views import BasicView
-from flask.ext.httpauth import HTTPBasicAuth
-auth = HTTPBasicAuth()
+from basic_views import BasicView, auth
 
 
 class BasicJobView(BasicView):

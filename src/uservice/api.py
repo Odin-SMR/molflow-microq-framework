@@ -74,6 +74,7 @@ class JobServer(Flask):
 def main():
     """Default function"""
     app = JobServer(__name__)
+
     app.run(
         host='0.0.0.0',
         debug='MOLFLOW_MICRO_QUEUE' not in environ,
