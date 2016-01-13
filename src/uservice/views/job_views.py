@@ -1,7 +1,9 @@
 """ Basic views for REST api that require job id
 """
-from flask import jsonify, request, abort
+from flask import jsonify
 from basic_views import BasicView
+from flask.ext.httpauth import HTTPBasicAuth
+auth = HTTPBasicAuth()
 
 
 class BasicJobView(BasicView):
@@ -10,30 +12,21 @@ class BasicJobView(BasicView):
         """GET"""
         self._check_version(version)
 
-        if self._authenticate():
-            return self._get_view(version, job_id)
+        return self._get_view(version, job_id)
 
-    def _get_view(self, version, job_id):
-        """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version, ID=job_id)
-
-
-class AuthJobView(BasicJobView):
-    """The class which views requiring authentication and job id can inherit
-    from."""
+    @auth.login_required
     def put(self, version, job_id):
         """PUT"""
         self._check_version(version)
 
-        if self._authenticate():
-            return self._put_view(version, job_id)
+        return self._put_view(version, job_id)
 
+    @auth.login_required
     def delete(self, version, job_id):
         """DELETE"""
         self._check_version(version)
 
-        if not self._authenticate():
-            return self._delete_view(version, job_id)
+        return self._delete_view(version, job_id)
 
     def _get_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
@@ -47,17 +40,8 @@ class AuthJobView(BasicJobView):
         """Dummy method which should be over loaded by derived classes"""
         return jsonify(Version=version, ID=job_id, Call="DELETE")
 
-    def _authenticate(self):
-        """Dummy method that should be made more intelligent."""
-        auth = request.args.get('auth')
 
-        if auth is None:
-            abort(401)
-        else:
-            return True
-
-
-class JobData(AuthJobView):
+class JobData(BasicJobView):
     """Get data needed for job and deliver results when done"""
     def _get_view(self, version, job_id):
         """Used to get data for processing"""
@@ -68,7 +52,7 @@ class JobData(AuthJobView):
         return jsonify(Version=version, ID=job_id, Call="PUT")
 
 
-class JobStatus(AuthJobView):
+class JobStatus(BasicJobView):
     """Get and set jobstatus as JSON object"""
     def _get_view(self, version, job_id):
         """Used to get job status"""
@@ -79,7 +63,7 @@ class JobStatus(AuthJobView):
         return jsonify(Version=version, ID=job_id, Call="PUT")
 
 
-class JobClaim(AuthJobView):
+class JobClaim(BasicJobView):
     """Claim job"""
     def _get_view(self, version, job_id):
         """Used to see which Worker has claimed job and at what time"""
@@ -90,7 +74,7 @@ class JobClaim(AuthJobView):
         return jsonify(Version=version, ID=job_id, Call="PUT")
 
 
-class JobLock(AuthJobView):
+class JobLock(BasicJobView):
     """Lock and unlock job"""
     def _get_view(self, version, job_id):
         """Used to get lock status"""
@@ -103,6 +87,10 @@ class JobLock(AuthJobView):
 
 class JobStatusHumanReadable(BasicJobView):
     """Get jobstatus as html"""
-    def _get_view(self, version, job_id):
+    def get(self, job_id):
+        """GET"""
+        return self._get_view(job_id)
+
+    def _get_view(self, job_id):
         """Used to get a human readable status for job"""
-        return jsonify(Version=version, ID=job_id)
+        return jsonify(ID=job_id)

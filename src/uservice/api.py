@@ -2,7 +2,7 @@
 
 from flask import Flask
 from uservice.views.basic_views import (ListJobs, ListJobsHumanReadable,
-                                        FetchNextJob)
+                                        FetchNextJob, BasicView)
 from uservice.views.job_views import (JobClaim, JobStatus, JobData, JobLock,
                                       JobStatusHumanReadable)
 from os import environ
@@ -12,6 +12,13 @@ class JobServer(Flask):
     """The main app running the job server"""
     def __init__(self, name):
         super(JobServer, self).__init__(name)
+        # Debug views:
+        self.add_url_rule(
+            # Debug GET, PUT, DELETE authorization
+            '/rest_api/<version>/auth/',
+            view_func=BasicView.as_view('authdebug'),
+            methods=["GET", "PUT", "DELETE"]
+            )
         # Rules for human readables:
         self.add_url_rule(
             # GET human readable list of jobs
