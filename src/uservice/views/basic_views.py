@@ -2,8 +2,7 @@
 """
 from flask import jsonify, abort, make_response
 from flask.views import MethodView
-from flask.ext.httpauth import HTTPBasicAuth
-auth = HTTPBasicAuth()
+from uservice.core.users import auth
 
 
 class BasicView(MethodView):
