@@ -1,17 +1,16 @@
 """A simple datamodel implementation"""
 
-from os import environ
-from core.app import app
+import os
+from core.app import app, db
 
 
-def main():
+def start_server():
     """Default function"""
+    if not os.path.exists('db.sqlite'):
+        db.create_all()
 
     app.run(
         host='0.0.0.0',
-        debug='MOLFLOW_MICRO_QUEUE' not in environ,
+        debug='MOLFLOW_MICRO_QUEUE' not in os.environ,
         threaded=True
         )
-
-if __name__ == "__main__":
-    main()

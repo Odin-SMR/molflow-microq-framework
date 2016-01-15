@@ -15,4 +15,5 @@ run pip install flask flask-bootstrap flask-httpauth flask-restful \
 copy src/ /app/
 run cd /app && python setup.py develop
 expose 5000
-cmd python -m uservice.api
+copy start.py /start.py
+cmd python /start.py

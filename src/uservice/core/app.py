@@ -1,11 +1,12 @@
 from flask import Flask, g, request, abort, jsonify, url_for
 from flask.ext.sqlalchemy import SQLAlchemy
-from users import get_user_db, auth
-from uservice.views.basic_views import ListJobs, FetchNextJob, BasicView
-from uservice.views.job_views import JobClaim, JobStatus, JobData, JobLock
-from uservice.views.site_views import (JobStatusHumanReadable,
-                                       ListJobsHumanReadable,
-                                       ServerStatusHumanReadable)
+from ..core.users import get_user_db, auth
+from ..views.basic_views import ListJobs, FetchNextJob, BasicView
+from ..views.job_views import JobClaim, JobStatus, JobData, JobLock
+from ..views.site_views import (JobStatusHumanReadable,
+                                ListJobsHumanReadable,
+                                ServerStatusHumanReadable)
+print auth, "app"
 
 
 class JobServer(Flask):
@@ -106,7 +107,7 @@ def verify_password(username_or_token, password):
     return True
 
 
-@app.route('/rest_api/admin/users', methods=['POST'])
+@app.route('/rest_api/admin/users/', methods=['POST'])
 def new_user():
     username = request.json.get('username')
     password = request.json.get('password')
