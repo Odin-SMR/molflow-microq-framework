@@ -10,8 +10,12 @@ Minimal requirements:
         deliver data
 
 Next steps:
-    job status get and update
-    unlock job
+    server:
+        separate fetch and claim
+        job status get and update
+        unlock job
+    client:
+        separate fetch and claim
 
 After that:
     Human readable list and job status
