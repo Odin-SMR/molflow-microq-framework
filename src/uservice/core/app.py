@@ -92,6 +92,7 @@ db = SQLAlchemy(app)
 User = get_user_db(db, app)
 
 
+# user admininstration and authentication
 @auth.verify_password
 def verify_password(username_or_token, password):
     # first try to authenticate by token
