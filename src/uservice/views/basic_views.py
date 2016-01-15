@@ -66,6 +66,9 @@ class FetchNextJob(BasicView):
             contains URIs for claming job, as well as for getting/delivering
             data.
             On the other hand, why?
+            * Because it gives a neater interface, and because the claiming
+              URI can be put in the object and included in the listing.
+            * Easier to debug/get status if fetching can be done w/o auth
         """
         return jsonify(Version=version)
 
