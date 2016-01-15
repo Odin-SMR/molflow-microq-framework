@@ -1,6 +1,8 @@
 """ Basic views for REST api that require job id
 """
-from flask import jsonify
+import os
+from flask import jsonify, request
+from werkzeug import secure_filename
 from basic_views import BasicView
 from uservice.core.users import auth
 
@@ -42,13 +44,28 @@ class BasicJobView(BasicView):
 
 class JobData(BasicJobView):
     """Get data needed for job and deliver results when done"""
+    ALLOWED_EXTENSIONS = ["data"]
+    UPLOAD_FOLDER = "/path/to/uploaded"
+
     def _get_view(self, version, job_id):
         """Used to get data for processing"""
         return jsonify(Version=version, ID=job_id)
 
     def _put_view(self, version, job_id):
         """Used to deliver data when job is done"""
-        return jsonify(Version=version, ID=job_id, Call="PUT")
+        theFile = request.files['file']
+        if theFile and self._allowed_file(theFile.filename):
+            filename = secure_filename(theFile.filename)
+            theFile.save(os.path.join(self.UPLOAD_FOLDER, filename))
+            return jsonify(Version=version, ID=job_id, Call="PUT: {0}".format(
+                filename))
+
+        return jsonify(Version=version, ID=job_id, Call="PUT: {0}".format(
+            filename), Message="Error: File not allowed?")
+
+    def _allowed_file(self, filename):
+        return ('.' in filename and filename.rsplit('.', 1)[1] in
+                self.ALLOWED_EXTENSIONS)
 
 
 class JobStatus(BasicJobView):
