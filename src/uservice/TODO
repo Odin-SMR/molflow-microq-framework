@@ -1,0 +1,18 @@
+Minimal requirements:
+    server:
+        list jobs
+        fetch job
+        lock job
+        get data
+        deliver data
+    client:
+        fetch job
+        deliver data
+
+Next steps:
+    job status get and update
+    unlock job
+
+After that:
+    Human readable list and job status
+    handle timeouts
