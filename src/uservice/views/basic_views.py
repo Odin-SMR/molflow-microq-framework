@@ -3,7 +3,6 @@
 from flask import jsonify, abort, make_response
 from flask.views import MethodView
 from ..core.users import auth
-print auth, "basic"
 
 
 class BasicView(MethodView):

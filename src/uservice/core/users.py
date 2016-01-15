@@ -3,7 +3,6 @@ from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 from flask.ext.httpauth import HTTPBasicAuth
 auth = HTTPBasicAuth()
-print auth, "users"
 
 
 def get_user_db(db, app):

@@ -5,7 +5,6 @@ from flask import jsonify, request
 from werkzeug import secure_filename
 from ..views.basic_views import BasicView
 from ..core.users import auth
-print auth, "jobs"
 
 
 class BasicJobView(BasicView):

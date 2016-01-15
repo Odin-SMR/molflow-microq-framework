@@ -6,7 +6,6 @@ from ..views.job_views import JobClaim, JobStatus, JobData, JobLock
 from ..views.site_views import (JobStatusHumanReadable,
                                 ListJobsHumanReadable,
                                 ServerStatusHumanReadable)
-print auth, "app"
 
 
 class JobServer(Flask):
