@@ -50,7 +50,29 @@ class BasicView(MethodView):
 
 class FetchNextJob(BasicView):
     """View for fetching next job from queue"""
+    @auth.login_required
+    def get(self, version):
+        """GET"""
+        self._check_version(version)
+
+        return self._get_view(version)
+
+    def _get_view(self, version):
+        """Should return JSON object with URI for getting/delivering data etc.
+        after locking job.
+
+        Later:
+            Separate fetching and claiming, so that the returned object
+            contains URIs for claming job, as well as for getting/delivering
+            data.
+            On the other hand, why?
+        """
+        return jsonify(Version=version)
 
 
 class ListJobs(BasicView):
     """View for listing jobs as JSON object"""
+    def _get_view(self, version):
+        """Should return a JSON object with a list of jobs with URIs for
+        getting data etc."""
+        return jsonify(Version=version)
