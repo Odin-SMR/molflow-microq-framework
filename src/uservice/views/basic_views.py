@@ -2,9 +2,10 @@
 """
 from flask import jsonify, abort, make_response
 from flask.views import MethodView
-from sqlalchemy import create_engine, sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from ..core.users import auth
-from ..datamode.model import Level1
+from ..datamodel.model import Level1
 
 
 class BasicView(MethodView):
