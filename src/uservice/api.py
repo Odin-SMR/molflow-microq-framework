@@ -1,13 +1,13 @@
 """A simple datamodel implementation"""
 
 import os
-from core.app import app, db
+from core.app import app, user_db
 
 
 def start_server():
     """Default function"""
-    if not os.path.exists('db.sqlite'):
-        db.create_all()
+    if not os.path.exists('user_db.sqlite'):
+        user_db.create_all()
 
     app.run(
         host='0.0.0.0',

@@ -5,12 +5,12 @@ from flask.ext.httpauth import HTTPBasicAuth
 auth = HTTPBasicAuth()
 
 
-def get_user_db(db, app):
-    class User(db.Model):
+def get_user_db(user_db, app):
+    class User(user_db.Model):
         __tablename__ = 'users'
-        id = db.Column(db.Integer, primary_key=True)
-        username = db.Column(db.String(32), index=True)
-        password_hash = db.Column(db.String(64))
+        id = user_db.Column(user_db.Integer, primary_key=True)
+        username = user_db.Column(user_db.String(32), index=True)
+        password_hash = user_db.Column(user_db.String(64))
 
         def hash_password(self, password):
             self.password_hash = pwd_context.encrypt(password)

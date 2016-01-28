@@ -88,8 +88,8 @@ app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 
 
 # extensions
-db = SQLAlchemy(app)
-User = get_user_db(db, app)
+user_db = SQLAlchemy(app)
+User = get_user_db(user_db, app)
 
 
 # user admininstration and authentication
@@ -106,7 +106,7 @@ def verify_password(username_or_token, password):
     return True
 
 
-@app.route('/rest_api/admin/users/', methods=['POST'])
+@ app.route('/rest_api/admin/users/', methods=['POST'])
 def new_user():
     username = request.json.get('username')
     password = request.json.get('password')
@@ -116,8 +116,8 @@ def new_user():
         abort(400)    # existing user
     user = User(username=username)
     user.hash_password(password)
-    db.session.add(user)
-    db.session.commit()
+    user_db.session.add(user)
+    user_db.session.commit()
     return (jsonify({'username': user.username}), 201,
             {'Location': url_for('get_user', id=user.id, _external=True)})
 
@@ -130,7 +130,7 @@ def get_user(id):
     return jsonify({'username': user.username})
 
 
-@app.route('/rest_api/admin/token')
+@ app.route('/rest_api/admin/token')
 @auth.login_required
 def get_auth_token():
     token = g.user.generate_auth_token(600)
