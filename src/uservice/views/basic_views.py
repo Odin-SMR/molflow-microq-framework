@@ -78,6 +78,8 @@ class FetchNextJob(BasicView):
 
 class ListJobs(BasicView):
     """View for listing jobs as JSON object"""
+    _translate_backend = {'B': 'AC1', 'C': 'AC2'}
+
     def __init__(self):
         super(ListJobs, self).__init__()
         self._engine = create_engine(
@@ -89,5 +91,25 @@ class ListJobs(BasicView):
         """Should return a JSON object with a list of jobs with URIs for
         getting data etc."""
         jobs = self._session.query(Level1).all()
+        job_list = self._make_job_list(jobs)
+        return jsonify(Version=version, Jobs=job_list)
 
-        return jsonify(Version=version, Jobs=jobs)
+    def _job_list(self, jobs):
+        job_list = []
+        for j in jobs:
+            job = {}
+            job['Orbit'] = j.orbit
+            job['Backend'] = self._translate_backend[j.backend]
+            job['CalVersion'] = j.calversion.to_eng_string()
+            job['LogFile'] = {}
+            try:
+                job['LogFile']['FileDate'] = j.logfile[0].filedate.isoformat()
+            except:
+                pass
+            job['HDFFile'] = {}
+            try:
+                job['HDFFile']['FileDate'] = j.hdffile[0].filedate.isoformat()
+            except:
+                pass
+            job_list.append(job)
+        return job_list
