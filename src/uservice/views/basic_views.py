@@ -51,31 +51,6 @@ class BasicView(MethodView):
         return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 
-class FetchNextJob(BasicView):
-    """View for fetching next job from queue"""
-    @auth.login_required
-    def get(self, version):
-        """GET"""
-        self._check_version(version)
-
-        return self._get_view(version)
-
-    def _get_view(self, version):
-        """Should return JSON object with URI for getting/delivering data etc.
-        after locking job.
-
-        Later:
-            Separate fetching and claiming, so that the returned object
-            contains URIs for claming job, as well as for getting/delivering
-            data.
-            On the other hand, why?
-            * Because it gives a neater interface, and because the claiming
-              URI can be put in the object and included in the listing.
-            * Easier to debug/get status if fetching can be done w/o auth
-        """
-        return jsonify(Version=version)
-
-
 class ListJobs(BasicView):
     """View for listing jobs as JSON object"""
     _translate_backend = {'B': 'AC1', 'C': 'AC2'}
@@ -113,3 +88,33 @@ class ListJobs(BasicView):
                 pass
             job_list.append(job)
         return job_list
+
+
+class FetchNextJob(ListJobs):
+    """View for fetching next job from queue"""
+    def __init__(self):
+        super(FetchNextJob, self).__init__()
+
+    @auth.login_required
+    def get(self, version):
+        """GET"""
+        self._check_version(version)
+
+        return self._get_view(version)
+
+    def _get_view(self, version):
+        """Should return JSON object with URI for getting/delivering data etc.
+        after locking job.
+
+        Later:
+            Separate fetching and claiming, so that the returned object
+            contains URIs for claming job, as well as for getting/delivering
+            data.
+            On the other hand, why?
+            * Because it gives a neater interface, and because the claiming
+              URI can be put in the object and included in the listing.
+            * Easier to debug/get status if fetching can be done w/o auth
+        """
+        jobs = [self._session.query(Level1).first()]
+        job_list = self._make_job_list(jobs)
+        return jsonify(Version=version, Job=job_list[0])
