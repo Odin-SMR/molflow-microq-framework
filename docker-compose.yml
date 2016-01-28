@@ -12,5 +12,15 @@ webapi:
   volumes:
     - ./src/:/app
     - ./data/:/var/lib/odindata
-#  links:
-#    - postgresql
+  links:
+    - mysqlhost
+
+mysqlhost:
+  image: docker2.molflow.com/devops/hermod_mysql
+  environment:
+    - MYSQL_ROOT_PASSWORD=empty
+    - MYSQL_DATABASE=smr
+    - MYSQL_USER=odinuser
+    - MYSQL_PASSWORD=IK)Bag4F
+  ports:
+    - localhost:3306:3306
