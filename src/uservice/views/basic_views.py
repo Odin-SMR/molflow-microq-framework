@@ -94,7 +94,7 @@ class ListJobs(BasicView):
         job_list = self._make_job_list(jobs)
         return jsonify(Version=version, Jobs=job_list)
 
-    def _job_list(self, jobs):
+    def _make_job_list(self, jobs):
         job_list = []
         for j in jobs:
             job = {}
