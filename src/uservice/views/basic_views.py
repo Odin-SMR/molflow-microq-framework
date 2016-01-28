@@ -2,7 +2,9 @@
 """
 from flask import jsonify, abort, make_response
 from flask.views import MethodView
+from sqlalchemy import create_engine, sessionmaker
 from ..core.users import auth
+from ..datamode.model import Level1
 
 
 class BasicView(MethodView):
@@ -75,7 +77,16 @@ class FetchNextJob(BasicView):
 
 class ListJobs(BasicView):
     """View for listing jobs as JSON object"""
+    def __init__(self):
+        super(ListJobs, self).__init__()
+        self._engine = create_engine(
+            'mysql://odinuser:IK)Bag4F@mysqlhost/hermod')
+        make_session = sessionmaker(bind=self._engine)
+        self._session = make_session()
+
     def _get_view(self, version):
         """Should return a JSON object with a list of jobs with URIs for
         getting data etc."""
-        return jsonify(Version=version)
+        jobs = self._session.query(Level1).all()
+
+        return jsonify(Version=version, Jobs=jobs)
