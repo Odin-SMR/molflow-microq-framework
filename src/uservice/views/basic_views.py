@@ -81,7 +81,7 @@ class ListJobs(BasicView):
     def __init__(self):
         super(ListJobs, self).__init__()
         self._engine = create_engine(
-            'mysql://odinuser:***REMOVED***@mysqlhost/hermod')
+            'mysql+pymysql://odinuser:***REMOVED***@mysqlhost/hermod')
         make_session = sessionmaker(bind=self._engine)
         self._session = make_session()
 
