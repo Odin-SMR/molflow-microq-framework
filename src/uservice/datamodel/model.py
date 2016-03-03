@@ -86,7 +86,7 @@ class FileServer(object):
 
 class Level1Inserter(object):
     def __init__(self, level1b_dir):
-        engine = create_engine('mysql://odinuser:***REMOVED***@mysqlhost/hermod')
+        engine = create_engine('mysql://odinuser:***REMOVED***@mysqlhost/smr')
         session = sessionmaker(bind=engine)
         self.ses = session()
         self.pattern = compile(
@@ -111,7 +111,7 @@ class Level1Inserter(object):
             hdffile = []
             if file_type == "HDF":
                 hdffile = [HdfFile(
-                    filedate=datetime.fromtimestamp(getctime(file)), 
+                    filedate=datetime.fromtimestamp(getctime(file)),
                     update=datetime.now()
                     )]
             if file_type == "LOG":
