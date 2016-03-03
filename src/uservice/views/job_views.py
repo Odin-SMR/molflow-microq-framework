@@ -54,8 +54,8 @@ class JobData(BasicJobView):
     def _put_view(self, version, job_id):
         """Used to deliver data when job is done"""
         theFile = request.files['file']
+        filename = secure_filename(theFile.filename)
         if theFile and self._allowed_file(theFile.filename):
-            filename = secure_filename(theFile.filename)
             theFile.save(os.path.join(self.UPLOAD_FOLDER, filename))
             return jsonify(Version=version, ID=job_id, Call="PUT: {0}".format(
                 filename))
