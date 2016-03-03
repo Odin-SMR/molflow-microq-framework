@@ -53,12 +53,12 @@ class BasicView(MethodView):
 
 class ListJobs(BasicView):
     """View for listing jobs as JSON object"""
-    _translate_backend = {'B': 'AC1', 'C': 'AC2'}
+    _translate_backend = {'B': 'AC1', 'C': 'AC2', 'AC1': 'AC1', 'AC2': 'AC2'}
 
     def __init__(self):
         super(ListJobs, self).__init__()
         self._engine = create_engine(
-            'mysql+pymysql://odinuser:IK)Bag4F@mysqlhost/hermod')
+            'mysql+pymysql://odinuser:IK)Bag4F@mysqlhost/smr')
         make_session = sessionmaker(bind=self._engine)
         self._session = make_session()
 
@@ -72,22 +72,37 @@ class ListJobs(BasicView):
     def _make_job_list(self, jobs):
         job_list = []
         for j in jobs:
-            job = {}
-            job['Orbit'] = j.orbit
-            job['Backend'] = self._translate_backend[j.backend]
-            job['CalVersion'] = j.calversion.to_eng_string()
-            job['LogFile'] = {}
-            try:
-                job['LogFile']['FileDate'] = j.logfile[0].filedate.isoformat()
-            except:
-                pass
-            job['HDFFile'] = {}
-            try:
-                job['HDFFile']['FileDate'] = j.hdffile[0].filedate.isoformat()
-            except:
-                pass
+            job = self._make_job_dict(j)
             job_list.append(job)
         return job_list
+
+    def _make_job_dict(self, job):
+            job_dict = {}
+            job_dict['Orbit'] = job.orbit
+            job_dict['Backend'] = self._translate_backend[job.backend]
+            # job_dict['FreqMode'] = ''
+            job_dict['CalVersion'] = job.calversion.to_eng_string()
+            job_dict['LogFile'] = {}
+            try:
+                job_dict['LogFile']['FileDate'] = (
+                    job.logfile[0].filedate.isoformat())
+            except:
+                pass
+            job_dict['HDFFile'] = {}
+            try:
+                job_dict['HDFFile']['FileDate'] = (
+                    job.hdffile[0].filedate.isoformat())
+            except:
+                pass
+            # job_dict['URL-ptz'] = (
+            #    '{0}rest_api/v1/ptz/{1}/{2}/{3}/{4}').format(
+            #    request.url_root,
+            #    date,
+            #    job_dict["Backend"],
+            #    job_dict["FreqMode"],
+            #    scanid
+            #    )
+            return job_dict
 
 
 class FetchNextJob(ListJobs):
