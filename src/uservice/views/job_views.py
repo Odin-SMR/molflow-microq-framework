@@ -5,6 +5,7 @@ from flask import jsonify, request
 from werkzeug import secure_filename
 from ..views.basic_views import BasicView
 from ..core.users import auth
+from datetime import datetime
 
 
 class BasicJobView(BasicView):
@@ -86,20 +87,21 @@ class JobClaim(BasicJobView):
         return jsonify(Version=version, ID=job_id)
 
     def _put_view(self, version, job_id):
-        """Used to claim job for Worker, also locks the job"""
-        return jsonify(Version=version, ID=job_id, Call="PUT")
-
-
-class JobLock(BasicJobView):
-    """Lock and unlock job:"""
-    def _get_view(self, version, job_id):
-        """Used to get lock status"""
-        return jsonify(Version=version, ID=job_id)
-
-    def _put_view(self, version, job_id):
-        """Used to lock job"""
-        return jsonify(Version=version, ID=job_id, Call="PUT")
+        """Used to claim job for Worker. Should return error if job is already
+        claimed."""
+        worker_id = request.files['worker']
+        if self._verify_worker(worker_id):
+            time = datetime.utcnow().isoformat()
+            return jsonify(Version=version, ID=job_id, Call="PUT", Time=time,
+                           ClaimedBy=worker_id)
+        else:
+            return jsonify(Version=version, ID=job_id, Call="PUT",
+                           Message="Worker ID not recognised.")
 
     def _delete_view(self, version, job_id):
-        """Used to remove lock from job"""
+        """Used to free a job"""
         return jsonify(Version=version, ID=job_id, Call="DELETE")
+
+    def _verify_worker(self, worker_id):
+        """Used to verify the worker ID"""
+        return True

@@ -2,7 +2,7 @@ from flask import Flask, g, request, abort, jsonify, url_for
 from flask.ext.sqlalchemy import SQLAlchemy
 from ..core.users import get_user_db, auth
 from ..views.basic_views import ListJobs, FetchNextJob, BasicView
-from ..views.job_views import JobClaim, JobStatus, JobData, JobLock
+from ..views.job_views import JobClaim, JobStatus, JobData
 from ..views.site_views import (JobStatusHumanReadable,
                                 ListJobsHumanReadable,
                                 ServerStatusHumanReadable)
@@ -61,16 +61,10 @@ class JobServer(Flask):
             methods=["GET", "PUT"]
             )
         self.add_url_rule(
-            # GET lock status, PUT lock in place, and DELETE lock
-            '/rest_api/<version>/jobs/<job_id>/lock/',
-            view_func=JobLock.as_view('joblock'),
-            methods=["GET", "PUT", "DELETE"]
-            )
-        self.add_url_rule(
-            # PUT to claim job
+            # PUT to claim job, GET to get claim status, DELETE to free job
             '/rest_api/<version>/jobs/<job_id>/claim/',
             view_func=JobClaim.as_view('jobclaim'),
-            methods=["GET", "PUT"]
+            methods=["GET", "PUT", "DELETE"]
             )
         self.add_url_rule(
             # GET to get data to process, PUT to deliver when done.
