@@ -86,16 +86,20 @@ class JobClaim(BasicJobView):
         return jsonify(Version=version, ID=job_id)
 
     def _put_view(self, version, job_id):
-        """Used to claim job for Worker"""
+        """Used to claim job for Worker, also locks the job"""
         return jsonify(Version=version, ID=job_id, Call="PUT")
 
 
 class JobLock(BasicJobView):
-    """Lock and unlock job"""
+    """Lock and unlock job:"""
     def _get_view(self, version, job_id):
         """Used to get lock status"""
         return jsonify(Version=version, ID=job_id)
 
     def _put_view(self, version, job_id):
-        """Used to set lock status"""
+        """Used to lock job"""
         return jsonify(Version=version, ID=job_id, Call="PUT")
+
+    def _delete_view(self, version, job_id):
+        """Used to remove lock from job"""
+        return jsonify(Version=version, ID=job_id, Call="DELETE")
