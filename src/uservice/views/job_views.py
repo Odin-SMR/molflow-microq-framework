@@ -54,15 +54,29 @@ class JobData(BasicJobView):
 
     def _put_view(self, version, job_id):
         """Used to deliver data when job is done"""
+        # Call to handle data and get status:
+        message, status = self._put_json(version, job_id)
+
+        # Update job list etc.
+        # TODO
+
+        # Return status:
+        return jsonify(Version=version, ID=job_id, Call="PUT",
+                       Message=message)
+
+    def _put_json(self, version, job_id):
+        """Used to deliver JSON data when job is done"""
+        return "Error: Not implemented!", -1
+
+    def _put_file(self, version, job_id):
+        """Used to deliver file data when job is done"""
         theFile = request.files['file']
         filename = secure_filename(theFile.filename)
         if theFile and self._allowed_file(theFile.filename):
             theFile.save(os.path.join(self.UPLOAD_FOLDER, filename))
-            return jsonify(Version=version, ID=job_id, Call="PUT: {0}".format(
-                filename))
+            return "Uploaded {0}".format(filename), 0
 
-        return jsonify(Version=version, ID=job_id, Call="PUT: {0}".format(
-            filename), Message="Error: File not allowed?")
+        return "Error: File not allowed?", -1
 
     def _allowed_file(self, filename):
         return ('.' in filename and filename.rsplit('.', 1)[1] in
