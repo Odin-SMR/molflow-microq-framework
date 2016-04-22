@@ -16,27 +16,43 @@ L2i = {
 }
 
 
-def check_json(data, prototype={"Data": ""}):
-    """Go through data, and try to add contents to prototype.
+def check_json(data, prototype={"Data": ""}, allowUnexpected=False,
+               allowMissing=False, fillMissing=False):
+    """Go through data, and try to add contents to mimic prototype.
 
-    Will fail if data contains unexpected contents."""
+    Will fail if data contains unexpected keys or if expected keys are missing,
+    unless this is overridden by keywords.
+    """
     lowKey = {}
     for k in prototype.keys():
         lowKey[k.lower] = k
 
-    fixedData = {}
+    if fillMissing:
+        fixedData = prototype.copy()
+    else:
+        fixedData = {}
+
     for k in data.keys:
         try:
-            fixedData[lowKey[k.lower]] = data[k]
+            if isinstance(prototype[lowKey[k.lower()]], dict):
+                fixedData[lowKey[k.lower()]] = check_json(
+                    data[k], prototype[lowKey[k.lower()]], allowUnexpected,
+                    allowMissing, fillMissing)
+            else:
+                fixedData[lowKey[k.lower()]] = data[k]
         except KeyError:
-            return {"JSONError:": "Data contains unexpected key '{0}'."
-                    "".format(k)}
+            if allowUnexpected:
+                fixedData[k] = data[k]
+            else:
+                return {"JSONError:": "Data contains unexpected key '{0}'."
+                        "".format(k)}
 
-    for k in prototype.keys():
-        try:
-            fixedData[k]
-        except KeyError:
-            return {"JSONError:": "Data is missing expected key '{0}'."
-                    "".format(k)}
+    if not allowMissing:
+        for k in prototype.keys():
+            try:
+                fixedData[k]
+            except KeyError:
+                return {"JSONError:": "Data is missing expected key '{0}'."
+                        "".format(k)}
 
     return fixedData
