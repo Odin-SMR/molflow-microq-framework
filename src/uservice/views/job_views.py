@@ -5,6 +5,7 @@ from flask import jsonify, request
 from werkzeug import secure_filename
 from ..views.basic_views import BasicView
 from ..core.users import auth
+from ..datamodel.jsonmodels import l2i_prototype, check_json
 from datetime import datetime
 
 
@@ -58,6 +59,7 @@ class JobData(BasicJobView):
 
         if request.headers['Content-Type'] == 'text/plain':
             message = "Text Message: " + request.data
+            status = 0
 
         elif request.headers['Content-Type'] == 'application/json':
             message, status = self._put_json(version, job_id)
@@ -68,17 +70,20 @@ class JobData(BasicJobView):
         else:
             message = "415 Unsupported Media Type: {0}".format(
                 request.headers['Content-Type'])
+            status = -1
 
         # Update job list etc.
         # TODO
 
         # Return status:
         return jsonify(Version=version, ID=job_id, Call="PUT",
-                       Message=message)
+                       Message=message, Status=status)
 
     def _put_json(self, version, job_id):
         """Used to deliver JSON data when job is done"""
-        return request.json, 0
+        json = check_json(request.json, l2i_prototype)
+        status = -1 * ("JSONError" in json.keys())
+        return json, status
 
     def _put_file(self, version, job_id):
         """Used to deliver file data when job is done"""
