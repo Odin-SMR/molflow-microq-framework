@@ -55,7 +55,19 @@ class JobData(BasicJobView):
     def _put_view(self, version, job_id):
         """Used to deliver data when job is done"""
         # Call to handle data and get status:
-        message, status = self._put_json(version, job_id)
+
+        if request.headers['Content-Type'] == 'text/plain':
+            message = "Text Message: " + request.data
+
+        elif request.headers['Content-Type'] == 'application/json':
+            message, status = self._put_json(version, job_id)
+
+        # elif request.headers['Content-Type'] == 'application/octet-stream':
+        #     message, status = self._put_file(version, job_id)
+
+        else:
+            message = "415 Unsupported Media Type: {0}".format(
+                request.headers['Content-Type'])
 
         # Update job list etc.
         # TODO
@@ -66,7 +78,7 @@ class JobData(BasicJobView):
 
     def _put_json(self, version, job_id):
         """Used to deliver JSON data when job is done"""
-        return "Error: Not implemented!", -1
+        return request.json, 0
 
     def _put_file(self, version, job_id):
         """Used to deliver file data when job is done"""
