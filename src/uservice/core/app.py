@@ -124,7 +124,7 @@ def get_user(id):
     return jsonify({'username': user.username})
 
 
-@ app.route('/rest_api/admin/token')
+@app.route('/rest_api/admin/token')
 @auth.login_required
 def get_auth_token():
     token = g.user.generate_auth_token(600)

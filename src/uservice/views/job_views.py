@@ -1,7 +1,7 @@
 """ Basic views for REST api that require job id
 """
 import os
-from flask import jsonify, request
+from flask import jsonify, request, g
 from werkzeug import secure_filename
 from ..views.basic_views import BasicView
 from ..core.users import auth
@@ -68,12 +68,18 @@ class JobData(BasicJobView):
         #     message, status = self._put_file(version, job_id)
 
         else:
-            message = "415 Unsupported Media Type: {0}".format(
+            message = "415 Unsupported data type: {0}".format(
                 request.headers['Content-Type'])
             status = -1
 
         # Update job list etc.
         # TODO
+        if status == 0:
+            self.log("Job {0} was delivered correctly by {1}.".format(
+                job_id, g.user.username), "info")
+        else:
+            self.log("Job {0} was delivered incorrectly by {1} (status {2})."
+                     "".format(job_id, g.user.username, status), "warning")
 
         # Return status:
         return jsonify(Version=version, ID=job_id, Call="PUT",
@@ -108,6 +114,8 @@ class JobStatus(BasicJobView):
 
     def _put_view(self, version, job_id):
         """Used to update job status"""
+        self.log("Status of job {0} was updated  by {1}.".format(
+            job_id, g.user.username), "info")
         return jsonify(Version=version, ID=job_id, Call="PUT")
 
 
@@ -120,17 +128,23 @@ class JobClaim(BasicJobView):
     def _put_view(self, version, job_id):
         """Used to claim job for Worker. Should return error if job is already
         claimed."""
-        worker_id = request.files['worker']
+        worker_id = g.user.username
         if self._verify_worker(worker_id):
             time = datetime.utcnow().isoformat()
+            self.log("Job {0} claimed by worker {1}".format(job_id, worker_id),
+                     "info")
             return jsonify(Version=version, ID=job_id, Call="PUT", Time=time,
                            ClaimedBy=worker_id)
         else:
+            self.log("Unknown worker {1} tried claiming job {0}.".format(
+                job_id, worker_id), "warning")
             return jsonify(Version=version, ID=job_id, Call="PUT",
                            Message="Worker ID not recognised.")
 
     def _delete_view(self, version, job_id):
         """Used to free a job"""
+        self.log("Job {0} was unlocked  by {1}.".format(
+            job_id, g.user.username), "info")
         return jsonify(Version=version, ID=job_id, Call="DELETE")
 
     def _verify_worker(self, worker_id):
