@@ -5,6 +5,7 @@ from flask.views import MethodView
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from ..core.users import auth
+from ..core.userver_log import logging
 from ..datamodel.model import Level1
 
 
@@ -49,6 +50,21 @@ class BasicView(MethodView):
     @auth.error_handler
     def unauthorized():
         return make_response(jsonify({'error': 'Unauthorized access'}), 401)
+
+    def log(self, message, level="info"):
+        if level.lower() == "debug":
+            logging.debug(message)
+        elif level.lower() == "info":
+            logging.warning(message)
+        elif level.lower() == "warning":
+            logging.warning(message)
+        elif level.lower() == "error":
+            logging.error(message)
+        elif level.lower() == "critical":
+            logging.critical(message)
+        else:
+            message += " (Unknown logging level {0})".format(level)
+            logging.info(message)
 
 
 class ListJobs(BasicView):
