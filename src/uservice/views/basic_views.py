@@ -1,6 +1,6 @@
 """ Basic views for REST api
 """
-from flask import jsonify, abort, make_response
+from flask import jsonify, abort, make_response, request
 from flask.views import MethodView
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -55,7 +55,7 @@ class BasicView(MethodView):
         if level.lower() == "debug":
             logging.debug(message)
         elif level.lower() == "info":
-            logging.warning(message)
+            logging.info(message)
         elif level.lower() == "warning":
             logging.warning(message)
         elif level.lower() == "error":
@@ -87,6 +87,7 @@ class ListJobs(BasicView):
 
     def _make_job_list(self, jobs):
         job_list = []
+        job_list.append(self._fake_job_dict())
         for j in jobs:
             job = self._make_job_dict(j)
             job_list.append(job)
@@ -110,14 +111,43 @@ class ListJobs(BasicView):
                     job.hdffile[0].filedate.isoformat())
             except:
                 pass
-            # job_dict['URL-ptz'] = (
-            #    '{0}rest_api/v1/ptz/{1}/{2}/{3}/{4}').format(
-            #    request.url_root,
-            #    date,
-            #    job_dict["Backend"],
-            #    job_dict["FreqMode"],
-            #    scanid
-            #    )
+            URLS = {}
+            # URLS["URL-spectra"] = (
+            #     '{0}rest_api/v4/scan/{1}/{2}/{3}/').format(
+            #     request.url_root,
+            #     job_dict["Backend"],
+            #     job_dict["FreqMode"],
+            #     job_dict["orbit"])
+            # URLS['URL-ptz'] = (
+            #     '{0}rest_api/v1/ptz/{1}/{2}/{3}/{4}').format(
+            #     request.url_root,
+            #     date,
+            #     job_dict["Backend"],
+            #     job_dict["FreqMode"],
+            #     scanid)
+            job_dict["URLS"] = URLS
+
+            return job_dict
+
+    def _fake_job_dict(self):
+            job_dict = {}
+            job_dict['ScanID'] = 7607881909
+            job_dict['Backend'] = "AC1"
+            job_dict['FreqMode'] = 2
+
+            URLS = {}
+            URLS["URL-spectra"] = "http://malachite.rss.chalmers.se/" + \
+                "rest_api/v4/scan/AC1/2/7607881909/"
+            URLS["URL-ptz"] = "http://malachite.rss.chalmers.se/" + \
+                "rest_api/v4/ptz/2016-03-16/AC1/2/7607881909/"
+            URLS["URL-claim"] = "{0}rest_api/v4/jobs/{1}/claim/".format(
+                request.url_root, job_dict['ScanID'])
+            URLS["URL-deliver"] = "{0}rest_api/v4/jobs/{1}/data/".format(
+                request.url_root, job_dict['ScanID'])
+            URLS["URL-status"] = "{0}rest_api/v4/jobs/{1}/".format(
+                request.url_root, job_dict['ScanID'])
+            job_dict["URLS"] = URLS
+
             return job_dict
 
 
