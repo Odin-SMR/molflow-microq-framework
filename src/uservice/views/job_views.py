@@ -114,7 +114,7 @@ class JobStatus(BasicJobView):
 
     def _put_view(self, version, job_id):
         """Used to update job status"""
-        self.log("Status of job {0} was updated  by {1}.".format(
+        self.log("Status of job {0} was updated by {1}.".format(
             job_id, g.user.username), "info")
         return jsonify(Version=version, ID=job_id, Call="PUT")
 
