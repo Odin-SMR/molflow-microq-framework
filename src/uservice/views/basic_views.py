@@ -25,6 +25,13 @@ class BasicView(MethodView):
         return self._put_view(version)
 
     @auth.login_required
+    def post(self, version):
+        """POST"""
+        self._check_version(version)
+
+        return self._post_view(version)
+
+    @auth.login_required
     def delete(self, version):
         """DELETE"""
         self._check_version(version)
@@ -33,15 +40,19 @@ class BasicView(MethodView):
 
     def _get_view(self, version):
         """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version)
+        abort(405)
 
     def _put_view(self, version):
         """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version, Call="PUT")
+        abort(405)
+
+    def _post_view(self, version):
+        """Dummy method which should be over loaded by derived classes"""
+        abort(405)
 
     def _delete_view(self, version):
         """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version, Call="DELETE")
+        abort(405)
 
     def _check_version(self, version):
         if version not in ['v1', 'v2', 'v3', 'v4']:
@@ -140,11 +151,11 @@ class ListJobs(BasicView):
                 "rest_api/v4/scan/AC1/2/7607881909/"
             URLS["URL-ptz"] = "http://malachite.rss.chalmers.se/" + \
                 "rest_api/v4/ptz/2016-03-16/AC1/2/7607881909/"
-            URLS["URL-claim"] = "{0}rest_api/v4/jobs/{1}/claim/".format(
+            URLS["URL-claim"] = "{0}rest_api/v4/jobs/{1}/claim".format(
                 request.url_root, job_dict['ScanID'])
-            URLS["URL-deliver"] = "{0}rest_api/v4/jobs/{1}/data/".format(
+            URLS["URL-deliver"] = "{0}rest_api/v4/jobs/{1}/data".format(
                 request.url_root, job_dict['ScanID'])
-            URLS["URL-status"] = "{0}rest_api/v4/jobs/{1}/".format(
+            URLS["URL-status"] = "{0}rest_api/v4/jobs/{1}".format(
                 request.url_root, job_dict['ScanID'])
             job_dict["URLS"] = URLS
 
@@ -156,7 +167,6 @@ class FetchNextJob(ListJobs):
     def __init__(self):
         super(FetchNextJob, self).__init__()
 
-    @auth.login_required
     def get(self, version):
         """GET"""
         self._check_version(version)

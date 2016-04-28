@@ -1,7 +1,7 @@
 """ Basic views for REST api that require job id
 """
 import os
-from flask import jsonify, request, g
+from flask import jsonify, request, g, abort
 from werkzeug import secure_filename
 from ..views.basic_views import BasicView
 from ..core.users import auth
@@ -25,6 +25,13 @@ class BasicJobView(BasicView):
         return self._put_view(version, job_id)
 
     @auth.login_required
+    def post(self, version, job_id):
+        """PUT"""
+        self._check_version(version)
+
+        return self._post_view(version, job_id)
+
+    @auth.login_required
     def delete(self, version, job_id):
         """DELETE"""
         self._check_version(version)
@@ -33,15 +40,19 @@ class BasicJobView(BasicView):
 
     def _get_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version, ID=job_id)
+        abort(405)
 
     def _put_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version, ID=job_id, Call="PUT")
+        abort(405)
+
+    def _post_view(self, version, job_id):
+        """Dummy method which should be over loaded by derived classes"""
+        abort(405)
 
     def _delete_view(self, version, job_id):
         """Dummy method which should be over loaded by derived classes"""
-        return jsonify(Version=version, ID=job_id, Call="DELETE")
+        abort(405)
 
 
 class JobData(BasicJobView):
@@ -53,7 +64,7 @@ class JobData(BasicJobView):
         """Used to get data for processing"""
         return jsonify(Version=version, ID=job_id)
 
-    def _put_view(self, version, job_id):
+    def _post_view(self, version, job_id):
         """Used to deliver data when job is done"""
         # Call to handle data and get status:
 
@@ -62,15 +73,13 @@ class JobData(BasicJobView):
             status = 0
 
         elif request.headers['Content-Type'] == 'application/json':
-            message, status = self._put_json(version, job_id)
+            message, status = self._post_json(version, job_id)
 
         # elif request.headers['Content-Type'] == 'application/octet-stream':
-        #     message, status = self._put_file(version, job_id)
+        #     message, status = self._post_file(version, job_id)
 
         else:
-            message = "415 Unsupported data type: {0}".format(
-                request.headers['Content-Type'])
-            status = -1
+            abort(415)
 
         # Update job list etc.
         # TODO
@@ -82,16 +91,18 @@ class JobData(BasicJobView):
                      "".format(job_id, g.user.username, status), "warning")
 
         # Return status:
-        return jsonify(Version=version, ID=job_id, Call="PUT",
+        return jsonify(Version=version, ID=job_id, Call="POST",
                        Message=message, Status=status)
 
-    def _put_json(self, version, job_id):
+    def _post_json(self, version, job_id):
         """Used to deliver JSON data when job is done"""
         json = check_json(request.json, l2i_prototype)
         status = -1 * ("JSONError" in json.keys())
+        if status != 0:
+            abort(400)
         return json, status
 
-    def _put_file(self, version, job_id):
+    def _post_file(self, version, job_id):
         """Used to deliver file data when job is done"""
         theFile = request.files['file']
         filename = secure_filename(theFile.filename)
@@ -112,11 +123,12 @@ class JobStatus(BasicJobView):
         """Used to get job status"""
         return jsonify(Version=version, ID=job_id)
 
-    def _put_view(self, version, job_id):
+    def _post_view(self, version, job_id):
         """Used to update job status"""
         self.log("Status of job {0} was updated by {1}.".format(
             job_id, g.user.username), "info")
-        return jsonify(Version=version, ID=job_id, Call="PUT")
+        return jsonify(Version=version, ID=job_id, Call="POST",
+                       Status=request.json)
 
 
 class JobClaim(BasicJobView):

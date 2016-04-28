@@ -16,7 +16,7 @@ class JobServer(Flask):
         # Debug views:
         self.add_url_rule(
             # Debug GET, PUT, DELETE authorization
-            '/rest_api/<version>/auth/',
+            '/rest_api/<version>/auth',
             view_func=BasicView.as_view('authdebug'),
             methods=["GET", "PUT", "DELETE"]
             )
@@ -30,13 +30,13 @@ class JobServer(Flask):
             )
         self.add_url_rule(
             # GET human readable list of jobs
-            '/jobs/',
+            '/jobs',
             view_func=ListJobsHumanReadable.as_view('listjobshr'),
             methods=["GET"]
             )
         self.add_url_rule(
             # GET human readable job status
-            '/jobs/<job_id>/',
+            '/jobs/<job_id>',
             view_func=JobStatusHumanReadable.as_view('jobstatushr'),
             methods=["GET"]
             )
@@ -44,33 +44,33 @@ class JobServer(Flask):
         # Rules for worker access:
         self.add_url_rule(
             # GET list of jobs
-            '/rest_api/<version>/jobs/',
+            '/rest_api/<version>/jobs',
             view_func=ListJobs.as_view('listjobs'),
             methods=["GET"]
             )
         self.add_url_rule(
             # GET next job URI etc.
-            '/rest_api/<version>/jobs/fetch/',
+            '/rest_api/<version>/jobs/fetch',
             view_func=FetchNextJob.as_view('fetchnextjob'),
             methods=["GET"]
             )
         self.add_url_rule(
-            # GET and PUT job status
-            '/rest_api/<version>/jobs/<job_id>/',
+            # GET and POST job status
+            '/rest_api/<version>/jobs/<job_id>',
             view_func=JobStatus.as_view('jobstatus'),
-            methods=["GET", "PUT"]
+            methods=["GET", "POST"]
             )
         self.add_url_rule(
             # PUT to claim job, GET to get claim status, DELETE to free job
-            '/rest_api/<version>/jobs/<job_id>/claim/',
+            '/rest_api/<version>/jobs/<job_id>/claim',
             view_func=JobClaim.as_view('jobclaim'),
             methods=["GET", "PUT", "DELETE"]
             )
         self.add_url_rule(
-            # GET to get data to process, PUT to deliver when done.
-            '/rest_api/<version>/jobs/<job_id>/data/',
+            # GET to get data to process, POST to deliver when done.
+            '/rest_api/<version>/jobs/<job_id>/data',
             view_func=JobData.as_view('jobdata'),
-            methods=["GET", "PUT"]
+            methods=["GET", "POST"]
             )
 
 
