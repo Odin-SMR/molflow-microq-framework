@@ -68,13 +68,13 @@ class JobData(BasicJobView):
         """Used to deliver data when job is done"""
         # Call to handle data and get status:
 
-        if request.headers['Content-Type'] == 'text/plain':
-            message = "Text Message: " + request.data
-            status = 0
-
-        elif request.headers['Content-Type'] == 'application/json':
+        if request.headers['Content-Type'] == 'application/json':
             message, status = self._post_json(version, job_id)
 
+        # elif request.headers['Content-Type'] == 'text/plain':
+        #     message = "Text Message: " + request.data
+        #    status = 0
+        #
         # elif request.headers['Content-Type'] == 'application/octet-stream':
         #     message, status = self._post_file(version, job_id)
 
