@@ -1,4 +1,4 @@
-from flask import Flask, g, request, abort, jsonify, url_for
+from flask import Flask, g, request, abort, jsonify, url_for, make_response
 from flask.ext.sqlalchemy import SQLAlchemy
 from ..core.users import get_user_db, auth
 from ..views.basic_views import ListJobs, FetchNextJob, BasicView
@@ -84,6 +84,57 @@ app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 # extensions
 user_db = SQLAlchemy(app)
 User = get_user_db(user_db, app)
+
+
+# error handling
+@app.errorhandler(400)
+def bad_request(error):
+    return make_response(jsonify({'error': 'Bad request'}), 400)
+
+
+@app.errorhandler(401)
+def unauthorized(error):
+    return make_response(jsonify({'error': 'Unauthorized'}), 401)
+
+
+@app.errorhandler(403)
+def forbidden(error):
+    return make_response(jsonify({'error': 'Forbidden'}), 403)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return make_response(jsonify({'error': 'Method not allowed'}), 405)
+
+
+@app.errorhandler(415)
+def unsupported_media_type(error):
+    return make_response(jsonify({'error': 'Unsupported media type'}), 415)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return make_response(jsonify({'error': 'Internal server error'}), 500)
+
+
+@app.errorhandler(501)
+def not_implemented(error):
+    return make_response(jsonify({'error': 'Not implemented'}), 501)
+
+
+@app.errorhandler(503)
+def service_unavailable(error):
+    return service_unavailable(jsonify({'error': 'Service unavailable'}), 503)
+
+
+@app.errorhandler(507)
+def insufficient_storage(error):
+    return service_unavailable(jsonify({'error': 'Insufficient storage'}), 507)
 
 
 # user admininstration and authentication
