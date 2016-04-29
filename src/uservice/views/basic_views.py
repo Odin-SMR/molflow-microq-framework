@@ -97,11 +97,24 @@ class ListJobs(BasicView):
         return jsonify(Version=version, Jobs=job_list)
 
     def _make_job_list(self, jobs):
-        job_list = []
-        job_list.append(self._fake_job_dict())
-        for j in jobs:
-            job = self._make_job_dict(j)
-            job_list.append(job)
+        return self._fake_job_list(jobs)
+
+    def _fake_job_list(self, jobs):
+        import requests
+        r = requests.get("http://malachite.rss.chalmers.se/rest_api/v4/"
+                         "freqmode_info/2015-01-03/AC1/2/")
+        job_list = r.json()["Info"]
+        for n, job in enumerate(job_list):
+            scan_id = job["ScanID"]
+            job_list[n]["URLS"]["URL-claim"] = (
+                "{0}rest_api/v4/jobs/{1}/claim").format(
+                    request.url_root, scan_id)
+            job_list[n]["URLS"]["URL-deliver"] = (
+                "{0}rest_api/v4/jobs/{1}/data").format(
+                    request.url_root, scan_id)
+            job_list[n]["URLS"]["URL-status"] = (
+                "{0}rest_api/v4/jobs/{1}").format(
+                    request.url_root, scan_id)
         return job_list
 
     def _make_job_dict(self, job):
