@@ -126,7 +126,7 @@ def deliver_job(result, uri, credentials, token=None):
 
 def main(args):
     r = get_job_list(args.apiroot)
-    assert_status(r.status_code, 200, "get_job")
+    assert_status(r.status_code, 200, "get_job_list")
 
     r = fetch_job(args.apiroot)
     assert_status(r.status_code, 200, "fetch_job")
