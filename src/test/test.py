@@ -26,10 +26,13 @@ class TestAdmin(unittest.TestCase):
 
     def test_token_authentication(self):
         """Test authenticating by token"""
-        r = requests.post(self._apiroot + "/v4/jobs/42", json="42",
-                          headers={'Content-Type': "application/json"},
-                          token=42)
-        self.assertEqual(r.status_code, 200)
+        r0 = requests.get(self._apiroot + "/token", auth=("worker1", "sqrrl"))
+        token = r0.json()["token"]
+        r1 = requests.post(self._apiroot + "/v4/jobs/42", json="42",
+                           headers={'Content-Type': "application/json"},
+                           auth=(token, ""))
+        self.assertEqual(r0.status_code, 200)
+        self.assertEqual(r1.status_code, 200)
 
 
 class TestBasicViews(unittest.TestCase):
