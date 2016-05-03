@@ -151,7 +151,7 @@ def verify_password(username_or_token, password):
     return True
 
 
-@ app.route('/rest_api/admin/users/', methods=['POST'])
+@ app.route('/rest_api/admin/users', methods=['POST'])
 def new_user():
     username = request.json.get('username')
     password = request.json.get('password')

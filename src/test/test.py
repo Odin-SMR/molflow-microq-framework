@@ -9,8 +9,12 @@ class TestAdmin(unittest.TestCase):
 
     def test_adding_user(self):
         """Test adding a new user"""
-        print "test_adding_user not implemented!"
-        self.assertTrue(False)
+        r = requests.post(self._apiroot + "/admin/users",
+                          auth=("skymandr", "42"),
+                          headers={'Content-Type': "application/json"},
+                          json={"username": "worker1", "password": "sqrrl"})
+
+        self.assertEqual(r.status_code, 400)
 
     def test_user_password_authentication(self):
         """Test authenticating by user and password"""
