@@ -1,3 +1,10 @@
+"""
+TODO:
+    The functionality in this submodule would probably be better implemented as
+    a JSON schema, see e.g.: http://json-schema.org/examples.html
+"""
+
+
 l2i_prototype = {
     "L2i": {
         "BLineOffset": [range(12)] * 4,
