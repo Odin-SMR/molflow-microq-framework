@@ -9,7 +9,7 @@ run apt-get update && apt-get install -y \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 run pip install flask flask-bootstrap flask-httpauth flask-restful \
-    passlib flask-sqlalchemy sqlalchemy pymysql jsonschema
+    passlib flask-sqlalchemy sqlalchemy pymysql jsonschema jsl
 
 #************* DEPENDENCIES
 
