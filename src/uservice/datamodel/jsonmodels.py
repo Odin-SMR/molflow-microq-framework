@@ -1,7 +1,8 @@
 """
 TODO:
-    The functionality in this submodule would probably be better implemented as
-    a JSON schema, see e.g.: http://json-schema.org/examples.html
+    The functionality in this submodule would probably be better
+    implemented as a JSON schema, see e.g.:
+        http://json-schema.org/examples.html
 """
 
 
@@ -25,10 +26,11 @@ l2i_prototype = {
 
 def check_json(data, prototype={"Data": ""}, allowUnexpected=False,
                allowMissing=False, fillMissing=False):
-    """Go through data, and try to add contents to mimic prototype.
+    """
+    Go through data, and try to add contents to mimic prototype.
 
-    Will fail if data contains unexpected keys or if expected keys are missing,
-    unless this is overridden by keywords.
+    Will fail if data contains unexpected keys or if expected keys are
+    missing, unless this is overridden by keywords.
     """
     lowKey = {}
     for k in prototype.keys():

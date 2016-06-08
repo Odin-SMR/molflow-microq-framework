@@ -39,22 +39,31 @@ class BasicView(MethodView):
         return self._delete_view(version)
 
     def _get_view(self, version):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
     def _put_view(self, version):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
     def _post_view(self, version):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
     def _delete_view(self, version):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
     def _check_version(self, version):
+        """Check that a valid version of the API is requested."""
         if version not in ['v1', 'v2', 'v3', 'v4']:
             abort(404)
 
@@ -90,8 +99,10 @@ class ListJobs(BasicView):
         self._session = make_session()
 
     def _get_view(self, version):
-        """Should return a JSON object with a list of jobs with URIs for
-        getting data etc."""
+        """
+        Should return a JSON object with a list of jobs with URIs for
+        getting data etc.
+        """
         jobs = self._session.query(Level1).all()
         job_list = self._make_job_list(jobs)
         return jsonify(Version=version, Jobs=job_list)
@@ -187,8 +198,9 @@ class FetchNextJob(ListJobs):
         return self._get_view(version)
 
     def _get_view(self, version):
-        """Should return JSON object with URI for getting/delivering data etc.
-        after locking job.
+        """
+        Should return JSON object with URI for getting/delivering data
+        etc. after locking job.
 
         Later:
             Separate fetching and claiming, so that the returned object

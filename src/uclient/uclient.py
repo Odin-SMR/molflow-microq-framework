@@ -8,16 +8,18 @@ VERBOSE = False
 
 
 def assert_status(status, expected, name=""):
+    """Check whether status is as expected and printresult."""
     if status != expected:
-        print "{2} got unexpected status code {0}, expected {1}".format(
-            status, expected, name)
+        print("{2} got unexpected status code {0}, expected {1}"
+              "".format(status, expected, name))
     else:
-        print "{2} got status code {0} (OK)".format(
-            status, expected, name)
+        print("{2} got status code {0} (OK)"
+              "".format(status, expected, name))
 
 
 def renew_token(uri, credentials):
-    """Renew token for token based authorization.
+    """
+    Renew token for token based authorization.
 
     Might not be necessary.
     """
@@ -25,22 +27,24 @@ def renew_token(uri, credentials):
 
 
 def load_credentials(filename="credentials.json"):
-    """Load credentials from credentials file.
+    """
+    Load credentials from credentials file.
 
     Not very secure."""
     with open(filename) as fp:
         credentials = json.load(fp)
     if VERBOSE:
-        print "loaded credentials from '{0}'".format(filename)
+        print("loaded credentials from '{0}'".format(filename))
 
     return credentials
 
 
 def get_credentials(args):
-    """Get credentials from arguments or file.
+    """
+    Get credentials from arguments or file.
 
-    If both file and user has been supplied, use the manually entered user and
-    password.
+    If both file and user has been supplied, use the manually entered
+    user and password.
     """
     if args.user is not None:
         return {"user": args.user, "password": args.password}
@@ -54,7 +58,7 @@ def get_job_list(uri):
     """Request list of jobs from server."""
     r = requests.get(uri + "/v4/jobs")
     if VERBOSE:
-        print r.text
+        print(r.text)
     return r
 
 
@@ -62,7 +66,7 @@ def fetch_job(uri):
     """Request an uprocessed job from server."""
     r = requests.get(uri + "/v4/jobs/fetch")
     if VERBOSE:
-        print r.text
+        print(r.text)
     return r
 
 
@@ -71,7 +75,7 @@ def claim_job(uri, credentials, token=None):
     r = requests.put(uri, data={"worker1": "hello world!"},
                      auth=(credentials['user'], credentials['password']))
     if VERBOSE:
-        print r.text
+        print(r.text)
     return r
 
 
@@ -79,7 +83,7 @@ def get_data(uri):
     """Get data to work with"""
     r = requests.get(uri)
     if VERBOSE:
-        print r.text
+        print(r.text)
     return r
 
 
@@ -110,7 +114,7 @@ def update_status(status, uri, credentials, token=None):
                       headers={'Content-Type': "application/json"},
                       auth=(credentials['user'], credentials['password']))
     if VERBOSE:
-        print r.text
+        print(r.text)
     return r
 
 
@@ -120,7 +124,7 @@ def deliver_job(result, uri, credentials, token=None):
                       headers={'Content-Type': "application/json"},
                       auth=(credentials['user'], credentials['password']))
     if VERBOSE:
-        print r.text
+        print(r.text)
     return r
 
 
@@ -139,7 +143,7 @@ def main(args):
 
     credentials = get_credentials(args)
     if credentials == -1:
-        print "no valid credentials! quitting..."
+        print("no valid credentials! quitting...")
         return -1
 
     r = claim_job(job.json()["Job"]["URLS"]["URL-claim"], credentials)

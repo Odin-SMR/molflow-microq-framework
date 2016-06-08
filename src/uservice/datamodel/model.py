@@ -1,19 +1,19 @@
-from sqlalchemy import Column, DateTime, String, Integer, ForeignKey, Float, Numeric, ForeignKeyConstraint
-from sqlalchemy.orm import relationship, backref
-from sqlalchemy.ext.declarative import declarative_base
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from os import walk
 from os.path import join as path_join
 from os.path import relpath, getctime
 
 from re import compile
-
 from datetime import datetime
+from sqlalchemy import (Column, DateTime, String, Integer, Float,
+                        Numeric, ForeignKeyConstraint)  # , ForeignKey)
+from sqlalchemy.orm import relationship  # , backref
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 
 Base = declarative_base()
+
 
 class Level1(Base):
     __tablename__ = 'level1'
@@ -23,6 +23,7 @@ class Level1(Base):
     hdffile = relationship('HdfFile')
     logfile = relationship('LogFile')
     scans = relationship('Scan')
+
 
 class HdfFile(Base):
     __tablename__ = 'l1hdffiles'
@@ -39,6 +40,7 @@ class HdfFile(Base):
     filedate = Column(DateTime)
     update = Column(DateTime)
 
+
 class LogFile(Base):
     __tablename__ = 'l1logfiles'
     __table_args__ = (
@@ -52,6 +54,7 @@ class LogFile(Base):
     calversion = Column(Numeric(2, 1), primary_key=True)
     filedate = Column(DateTime)
     update = Column(DateTime)
+
 
 class Scan(Base):
     __tablename__ = 'scans'
@@ -70,19 +73,18 @@ class Scan(Base):
 
 
 class FileServer(object):
-    """ Handles Odin files in a directory
-    """
+    """Handles Odin files in a directory"""
     def __init__(self, path):
         self.path = path
 
     def add_files(self):
-        """ a list of all files in the storage
-        """
+        """A list of all files in the storage"""
         file_list = []
         for dirpath, _, fnames in walk(self.path):
             for filename in fnames:
                 file_list.append(path_join(dirpath, filename))
         return file_list
+
 
 class Level1Inserter(object):
     def __init__(self, level1b_dir):
@@ -99,14 +101,14 @@ class Level1Inserter(object):
         file_storage = FileServer(level1b_dir)
         file_list = file_storage.add_files()
         for file in file_list:
-            match = self.pattern.search(relpath(file,level1b_dir))
+            match = self.pattern.search(relpath(file, level1b_dir))
             if match is None:
                 continue
             matchdict = match.groupdict()
             backend = matchdict['backend']
             file_type = matchdict['type']
             calversion = matchdict['calversion']
-            orbit=eval("0x" + matchdict['orbit'])
+            orbit = eval("0x" + matchdict['orbit'])
             logfile = []
             hdffile = []
             if file_type == "HDF":
@@ -139,6 +141,7 @@ class Level1Inserter(object):
                         )
                     )
         self.ses.commit()
+
 
 def main():
     """IT all starts here"""

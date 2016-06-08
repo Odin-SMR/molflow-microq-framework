@@ -39,19 +39,27 @@ class BasicJobView(BasicView):
         return self._delete_view(version, job_id)
 
     def _get_view(self, version, job_id):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
     def _put_view(self, version, job_id):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
     def _post_view(self, version, job_id):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
     def _delete_view(self, version, job_id):
-        """Dummy method which should be over loaded by derived classes"""
+        """
+        Dummy method which should be over loaded by derived classes
+        """
         abort(405)
 
 
@@ -138,8 +146,10 @@ class JobClaim(BasicJobView):
         return jsonify(Version=version, ID=job_id)
 
     def _put_view(self, version, job_id):
-        """Used to claim job for Worker. Should return error if job is already
-        claimed."""
+        """
+        Used to claim job for Worker. Should return error if job is
+        already claimed.
+        """
         worker_id = g.user.username
         if self._verify_worker(worker_id):
             time = datetime.utcnow().isoformat()
