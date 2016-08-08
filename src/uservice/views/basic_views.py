@@ -4,9 +4,9 @@ from flask import jsonify, abort, make_response, request
 from flask.views import MethodView
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from ..core.users import auth
-from ..core.userver_log import logging
-from ..datamodel.model import Level1
+from uservice.core.users import auth
+from uservice.core.userver_log import logging
+from uservice.datamodel.model import Level1
 
 
 class BasicView(MethodView):
