@@ -1,7 +1,7 @@
 """A simple datamodel implementation"""
 
 import os
-from core.app import app, user_db
+from uservice.core.app import app, user_db
 
 
 def start_server():

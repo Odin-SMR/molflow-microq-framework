@@ -1,9 +1,9 @@
 from flask import Flask, g, request, abort, jsonify, url_for, make_response
 from flask.ext.sqlalchemy import SQLAlchemy
-from ..core.users import get_user_db, auth
-from ..views.basic_views import ListJobs, FetchNextJob, BasicView
-from ..views.job_views import JobClaim, JobStatus, JobData
-from ..views.site_views import (JobStatusHumanReadable,
+from uservice.core.users import get_user_db, auth
+from uservice.views.basic_views import ListJobs, FetchNextJob, BasicView
+from uservice.views.job_views import JobClaim, JobStatus, JobData
+from uservice.views.site_views import (JobStatusHumanReadable,
                                 ListJobsHumanReadable,
                                 ServerStatusHumanReadable)
 
@@ -132,9 +132,9 @@ def service_unavailable(error):
     return service_unavailable(jsonify({'error': 'Service unavailable'}), 503)
 
 
-@app.errorhandler(507)
-def insufficient_storage(error):
-    return service_unavailable(jsonify({'error': 'Insufficient storage'}), 507)
+#@app.errorhandler(507)
+#def insufficient_storage(error):
+#    return service_unavailable(jsonify({'error': 'Insufficient storage'}), 507)
 
 
 # user admininstration and authentication

@@ -3,9 +3,9 @@
 import os
 from flask import jsonify, request, g, abort
 from werkzeug import secure_filename
-from ..views.basic_views import BasicView
-from ..core.users import auth
-from ..datamodel.jsonmodels import l2i_prototype, check_json
+from uservice.views.basic_views import BasicView
+from uservice.core.users import auth
+from uservice.datamodel.jsonmodels import l2i_prototype, check_json
 from datetime import datetime
 
 
