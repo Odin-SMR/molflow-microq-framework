@@ -4,179 +4,164 @@ import requests
 import argparse as ap
 
 
-VERBOSE = False
+class UClientError(Exception):
+    def __init__(self, reason, status_code=None):
+        self.status_code = status_code
+        if status_code:
+            msg = '{} {}'.format(status_code, reason)
+        else:
+            msg = reason
+        super(UClientError, self).__init__(msg)
 
 
-def assert_status(status, expected, name=""):
-    """Check whether status is as expected and printresult."""
-    if status != expected:
-        print("{2} got unexpected status code {0}, expected {1}"
-              "".format(status, expected, name))
-    else:
-        print("{2} got status code {0} (OK)"
-              "".format(status, expected, name))
+class UClient(object):
+    """API to the micro service"""
+
+    def __init__(self, apiroot, username=None, password=None,
+                 credentials_file=None, verbose=False):
+        self.uri = apiroot.strip('/')
+        self.verbose = verbose
+        self.credentials = self._get_credentials(
+            username, password, credentials_file)
+
+    def renew_token():
+        """
+        Renew token for token based authorization.
+
+        Might not be necessary.
+        """
+        pass
+
+    def _load_credentials(self, filename="credentials.json"):
+        """
+        Load credentials from credentials file.
+
+        Not very secure.
+        """
+        with open(filename) as fp:
+            credentials = json.load(fp)
+        if self.verbose:
+            print("loaded credentials from '{0}'".format(filename))
+        return credentials
+
+    def _get_credentials(self, username, password, credentials_file):
+        """
+        Get credentials from arguments or file.
+
+        If both file and user has been supplied, use the manually entered
+        user and password.
+        """
+        if username is not None:
+            return {"username": username, "password": password}
+        elif credentials_file is not None:
+            return self._load_credentials(credentials_file)
+        else:
+            return None
+
+    def get_job_list(self):
+        """Request list of jobs from server."""
+        return self._call_api(self.uri + "/v4/jobs")
+
+    def fetch_job(self):
+        """Request an unprocessed job from server."""
+        return self._call_api(self.uri + "/v4/jobs/fetch")
+
+    def claim_job(self, url, worker_name, token=None):
+        """Claim job from server"""
+        # TODO: Worker node info
+        return self._call_api(url, 'PUT', data={"worker": worker_name},
+                              auth=self.auth)
+
+    def get_data(self, url):
+        """Get data to work with"""
+        return self._call_api(url)
+
+    def update_status(self, url, status, token=None):
+        """Update status of job."""
+        return self._call_api(url, 'POST', json=status,
+                              headers={'Content-Type': "application/json"},
+                              auth=self.auth)
+
+    def deliver_job(self, url, result, token=None):
+        """Deliver finished job."""
+        return self._call_api(url, 'POST', json=result,
+                              headers={'Content-Type': "application/json"},
+                              auth=self.auth)
+
+    def _call_api(self, url, method='GET', **kwargs):
+        """Call micro service.
+
+        Returns:
+           r (requests.Response): The api response.
+        Raises:
+           UClientError: When api call failes.
+        """
+        # TODO: retry
+        try:
+            r = getattr(requests, method.lower())(url, **kwargs)
+        except Exception as e:
+            # TODO: log exception
+            raise UClientError('API call to %r failed: %s' % (url, e))
+        if self.verbose:
+            print(r.text)
+        if r.status_code > 299:
+            raise UClientError(r.reason, r.status_code)
+        return r
+
+    @property
+    def auth(self):
+        if not self.credentials:
+            raise UClientError('No credentials provided')
+        return (self.credentials['username'], self.credentials['password'])
 
 
-def renew_token(uri, credentials):
-    """
-    Renew token for token based authorization.
+class Job(object):
+    def __init__(self, data, api):
+        """Init a job.
 
-    Might not be necessary.
-    """
-    pass
+        Args:
+           data (dict): Job data as returned from api.
+           api (UClient): API to the micro service.
+        """
+        self.data = data
+        self.api = api
+        self.claimed = False
 
+    @classmethod
+    def fetch(cls, api):
+        r = api.fetch_job()
+        return cls(r.json(), api)
 
-def load_credentials(filename="credentials.json"):
-    """
-    Load credentials from credentials file.
+    @property
+    def url_claim(self):
+        return self.data["Job"]["URLS"]["URL-claim"]
 
-    Not very secure."""
-    with open(filename) as fp:
-        credentials = json.load(fp)
-    if VERBOSE:
-        print("loaded credentials from '{0}'".format(filename))
+    @property
+    def url_status(self):
+        return self.data["Job"]["URLS"]["URL-status"]
 
-    return credentials
+    @property
+    def url_spectra(self):
+        return self.data["Job"]["URLS"]["URL-spectra"]
 
+    @property
+    def url_deliver(self):
+        return self.data["Job"]["URLS"]["URL-deliver"]
 
-def get_credentials(args):
-    """
-    Get credentials from arguments or file.
+    def claim(self, worker='anonymous'):
+        if self.claimed:
+            return
+        try:
+            self.api.claim_job(self.url_claim, worker)
+            self.claimed = True
+        except UClientError:
+            raise
 
-    If both file and user has been supplied, use the manually entered
-    user and password.
-    """
-    if args.user is not None:
-        return {"user": args.user, "password": args.password}
-    elif args.credentials is not None:
-        return load_credentials(args.credentials)
-    else:
-        return -1
-
-
-def get_job_list(uri):
-    """Request list of jobs from server."""
-    r = requests.get(uri + "/v4/jobs")
-    if VERBOSE:
-        print(r.text)
-    return r
-
-
-def fetch_job(uri):
-    """Request an uprocessed job from server."""
-    r = requests.get(uri + "/v4/jobs/fetch")
-    if VERBOSE:
-        print(r.text)
-    return r
-
-
-def claim_job(uri, credentials, token=None):
-    """Claim job from server"""
-    r = requests.put(uri, data={"worker1": "hello world!"},
-                     auth=(credentials['user'], credentials['password']))
-    if VERBOSE:
-        print(r.text)
-    return r
-
-
-def get_data(uri):
-    """Get data to work with"""
-    r = requests.get(uri)
-    if VERBOSE:
-        print(r.text)
-    return r
-
-
-def do_work(data):
-    """Do work, or at least pretend to."""
-    l2i_prototype = {
-        "L2i": {
-            "BLineOffset": [range(12)] * 4,
-            "ChannelId": [range(639)] * 1,
-            "FitsSpectrum": [range(639)] * 1,
-            "FreqMode": 0,
-            "FreqOffset": 0.0,
-            "InvMode": "",
-            "LOFreq": [range(12)] * 1,
-            "MinLmFactor": 0,
-            "PointOffset": 0.0,
-            "Residual": 0.0,
-            "STW": [range(1)] * 12,
-            "ScanId": 0,
-        }
-    }
-    return l2i_prototype
-
-
-def update_status(status, uri, credentials, token=None):
-    """Update status of job."""
-    r = requests.post(uri, json=status,
-                      headers={'Content-Type': "application/json"},
-                      auth=(credentials['user'], credentials['password']))
-    if VERBOSE:
-        print(r.text)
-    return r
-
-
-def deliver_job(result, uri, credentials, token=None):
-    """Deliver finished job."""
-    r = requests.post(uri, json=result,
-                      headers={'Content-Type': "application/json"},
-                      auth=(credentials['user'], credentials['password']))
-    if VERBOSE:
-        print(r.text)
-    return r
-
-
-def main(args):
-    r = get_job_list(args.apiroot)
-    assert_status(r.status_code, 200, "get_job_list")
-
-    r = fetch_job(args.apiroot)
-    assert_status(r.status_code, 200, "fetch_job")
-    job = r
-
-    # The guys below should use different uris:
-    credentials = {"user": "snoopy", "password": "ace"}
-    r = claim_job(r.json()["Job"]["URLS"]["URL-claim"], credentials)
-    assert_status(r.status_code, 401, "claim_job")
-
-    credentials = get_credentials(args)
-    if credentials == -1:
-        print("no valid credentials! quitting...")
-        return -1
-
-    r = claim_job(job.json()["Job"]["URLS"]["URL-claim"], credentials)
-    assert_status(r.status_code, 200, "claim_job")
-
-    r = update_status({"Message": "Claimed job."},
-                      job.json()["Job"]["URLS"]["URL-status"], credentials)
-    assert_status(r.status_code, 200, "update_status")
-
-    r = get_data(job.json()["Job"]["URLS"]["URL-spectra"])
-    data = r.json()
-    assert_status(r.status_code, 200, "get_data")
-
-    r = update_status({"Message": "Got data."},
-                      job.json()["Job"]["URLS"]["URL-status"], credentials)
-    assert_status(r.status_code, 200, "update_status")
-
-    result = do_work(data)
-
-    r = update_status({"Message": "Work done."},
-                      job.json()["Job"]["URLS"]["URL-status"], credentials)
-    assert_status(r.status_code, 200, "update_status")
-
-    r = deliver_job(result, job.json()["Job"]["URLS"]["URL-deliver"],
-                    credentials)
-    assert_status(r.status_code, 200, "deliver_job")
-
-    r = update_status({"message": "Work delivered."},
-                      job.json()["Job"]["URLS"]["URL-status"], credentials)
-    assert_status(r.status_code, 200, "update_status")
-
+    def send_status(self, msg):
+        self.api.update_status(self.url_status, {'Message': msg})
 
 if __name__ == "__main__":
+    # TODO: Move to worker's main.
     parser = ap.ArgumentParser()
     parser.add_argument('-u', "--user", help="user name")
     parser.add_argument('-p', "--password", default="", help="user password")
@@ -188,5 +173,5 @@ if __name__ == "__main__":
     parser.add_argument('-v', "--verbose", help="use verbose output",
                         action="store_true")
     args = parser.parse_args()
-    VERBOSE = args.verbose
-    exit(main(args))
+    api = UClient(args.apiroot, args.user, args.password, args.credentials,
+                  verbose=args.verbose)
