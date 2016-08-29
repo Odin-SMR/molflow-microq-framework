@@ -10,6 +10,7 @@ STD_LOGPATH = '/home/logs'
 def get_logger(name, to_file=True, to_stdout=False,
                log_path=STD_LOGPATH, format_str=STD_FORMAT):
     logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
     formatter = logging.Formatter(format_str)
 
     if to_file:
