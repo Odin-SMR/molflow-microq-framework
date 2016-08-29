@@ -4,8 +4,8 @@ from uservice.core.users import get_user_db, auth
 from uservice.views.basic_views import ListJobs, FetchNextJob, BasicView
 from uservice.views.job_views import JobClaim, JobStatus, JobData
 from uservice.views.site_views import (JobStatusHumanReadable,
-                                ListJobsHumanReadable,
-                                ServerStatusHumanReadable)
+                                       ListJobsHumanReadable,
+                                       ServerStatusHumanReadable)
 
 
 class JobServer(Flask):
@@ -23,7 +23,7 @@ class JobServer(Flask):
 
         # Rules for human readables:
         self.add_url_rule(
-            # GET human readable list of jobs
+            # GET human readable server status
             '/',
             view_func=ServerStatusHumanReadable.as_view('serverstatusshr'),
             methods=["GET"]
