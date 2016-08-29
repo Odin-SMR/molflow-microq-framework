@@ -17,9 +17,11 @@ class UClientError(Exception):
 class UClient(object):
     """API to the micro service"""
 
-    def __init__(self, apiroot, username=None, password=None,
+    def __init__(self, apiroot, project, username=None, password=None,
                  credentials_file=None, verbose=False):
         self.uri = apiroot.strip('/')
+        # TODO: Add project support to api
+        self.project = project
         self.verbose = verbose
         self.credentials = self._get_credentials(
             username, password, credentials_file)
@@ -62,8 +64,9 @@ class UClient(object):
         """Request list of jobs from server."""
         return self._call_api(self.uri + "/v4/jobs")
 
-    def fetch_job(self):
+    def fetch_job(self, job_type=None):
         """Request an unprocessed job from server."""
+        # TODO: Add job type support to api
         return self._call_api(self.uri + "/v4/jobs/fetch")
 
     def claim_job(self, url, worker_name, token=None):
@@ -128,8 +131,8 @@ class Job(object):
         self.claimed = False
 
     @classmethod
-    def fetch(cls, api):
-        r = api.fetch_job()
+    def fetch(cls, job_type, api):
+        r = api.fetch_job(job_type)
         return cls(r.json(), api)
 
     @property
@@ -141,7 +144,14 @@ class Job(object):
         return self.data["Job"]["URLS"]["URL-status"]
 
     @property
-    def url_spectra(self):
+    def url_output(self):
+        """Send output from job to this url"""
+        # TODO
+        return
+
+    @property
+    def url_input_data(self):
+        # TODO: Should have a more general name than URL-spectra
         return self.data["Job"]["URLS"]["URL-spectra"]
 
     @property

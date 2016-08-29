@@ -23,10 +23,10 @@ class TestUClient(unittest.TestCase):
         self._credentials = {"username": "worker1",
                              "password": "sqrrl"}
 
-    def get_client(self, credentials=None):
+    def get_client(self, credentials=None, project='default_project'):
         credentials = (credentials if credentials is not None
                        else self._credentials)
-        return UClient(self._apiroot, verbose=True, **credentials)
+        return UClient(self._apiroot, project, verbose=True, **credentials)
 
     def test_api_exception(self):
         """Test api exception"""
@@ -40,7 +40,7 @@ class TestUClient(unittest.TestCase):
         with open(credentials_file, 'w') as out:
             out.write(json.dumps(self._credentials))
         api = self.get_client({'credentials_file': credentials_file})
-        job = Job.fetch(api)
+        job = Job.fetch('job_type', api)
         job.send_status('test')
 
     def test_bad_credentials(self):
@@ -48,7 +48,7 @@ class TestUClient(unittest.TestCase):
         # The guy below should use different uris:
         credentials = {"username": "snoopy", "password": "ace"}
         api = self.get_client(credentials)
-        job = Job.fetch(api)
+        job = Job.fetch('job_type', api)
         with self.assertRaises(UClientError):
             job.claim()
 
@@ -60,7 +60,7 @@ class TestUClient(unittest.TestCase):
 
         # No credentials provided
         api = self.get_client({})
-        job = Job.fetch(api)
+        job = Job.fetch('job_type', api)
         with self.assertRaises(UClientError):
             job.claim()
 
@@ -71,7 +71,7 @@ class TestUClient(unittest.TestCase):
         r = api.get_job_list()
         self.assertEqual(r.status_code, 200)
 
-        job = Job.fetch(api)
+        job = Job.fetch('job_type', api)
         self.assertFalse(job.claimed)
         job.claim()
         self.assertTrue(job.claimed)
@@ -80,7 +80,7 @@ class TestUClient(unittest.TestCase):
 
         job.send_status('Claimed job')
 
-        r = api.get_data(job.url_spectra)
+        r = api.get_data(job.url_input_data)
         data = r.json()
         self.assertEqual(len(data), 35)
 

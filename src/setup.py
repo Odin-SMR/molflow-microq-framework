@@ -5,7 +5,10 @@ setup(
     name='Hermod uService',
     version='1.0',
     long_description=__doc__,
-    packages=['uservice', 'uservice.views', 'uclient'],
+    packages=['uservice', 'uservice.views', 'uclient', 'uworker', 'utils'],
+    entry_points={
+        'console_scripts': ['uworker = uworker.uworker:main']
+    },
     include_package_data=True,
     zip_safe=False,
     install_requires=['Flask']
