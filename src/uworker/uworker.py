@@ -114,7 +114,7 @@ class UWorker(object):
         if url_deliver:
             cmd.append(url_deliver)
             cmd.extend(self.api.auth)
-
+        self.log.info('Starting job: %s' % cmd)
         popen = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
                                  universal_newlines=True)
@@ -134,18 +134,20 @@ class UWorker(object):
         popen.stdout.close()
         # TODO: Kill process if it takes too long before it exits
         return_code = popen.wait()
+        msg = 'Job exited with code %r' % return_code
         if return_code != 0:
-            msg = 'Job exited with code %r' % return_code
             self.log.warning(msg)
             if url_output:
                 buffer.write(msg)
                 self.api.update_output(url_output, buffer.getvalue())
+        else:
+            self.log.info(msg)
 
 
 def get_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'INPUT_DATA_URL',
+        'INPUT_DATA_URL', nargs='?',
         help='If provided, run command on this input url and exit')
     return parser
 
