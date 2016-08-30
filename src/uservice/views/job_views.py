@@ -3,88 +3,95 @@
 import os
 from flask import jsonify, request, g, abort
 from werkzeug import secure_filename
-from uservice.views.basic_views import BasicView
+from uservice.views.basic_views import BasicProjectView
 from uservice.core.users import auth
 from uservice.datamodel.jsonmodels import l2i_prototype, check_json
 from datetime import datetime
 
 
-class BasicJobView(BasicView):
+class BasicJobView(BasicProjectView):
     """Base class for views that require job id"""
-    def get(self, version, job_id):
+    def get(self, version, project, job_id):
         """GET"""
         self._check_version(version)
-
-        return self._get_view(version, job_id)
+        self._check_project(project)
+        return self._get_view(version, project, job_id)
 
     @auth.login_required
-    def put(self, version, job_id):
+    def put(self, version, project, job_id):
         """PUT"""
         self._check_version(version)
-
-        return self._put_view(version, job_id)
+        self._check_project(project)
+        return self._put_view(version, project, job_id)
 
     @auth.login_required
-    def post(self, version, job_id):
+    def post(self, version, project, job_id):
         """PUT"""
         self._check_version(version)
-
-        return self._post_view(version, job_id)
+        self._check_project(project)
+        return self._post_view(version, project, job_id)
 
     @auth.login_required
-    def delete(self, version, job_id):
+    def delete(self, version, project, job_id):
         """DELETE"""
         self._check_version(version)
+        self._check_project(project)
+        return self._delete_view(version, project, job_id)
 
-        return self._delete_view(version, job_id)
-
-    def _get_view(self, version, job_id):
+    def _get_view(self, version, project, job_id):
         """
         Dummy method which should be over loaded by derived classes
         """
         abort(405)
 
-    def _put_view(self, version, job_id):
+    def _put_view(self, version, project, job_id):
         """
         Dummy method which should be over loaded by derived classes
         """
         abort(405)
 
-    def _post_view(self, version, job_id):
+    def _post_view(self, version, project, job_id):
         """
         Dummy method which should be over loaded by derived classes
         """
         abort(405)
 
-    def _delete_view(self, version, job_id):
+    def _delete_view(self, version, project, job_id):
         """
         Dummy method which should be over loaded by derived classes
         """
         abort(405)
 
 
-class JobData(BasicJobView):
-    """Get data needed for job and deliver results when done"""
+class JobInput(BasicJobView):
+    """Get data needed for job"""
+    def _get_view(self, version, project, job_id):
+        """Used to get data for processing"""
+        return jsonify(Version=version, Project=project, ID=job_id)
+
+
+class JobResult(BasicJobView):
+    """Get and deliver results for a job"""
     ALLOWED_EXTENSIONS = ["data"]
     UPLOAD_FOLDER = "/path/to/uploaded"
 
-    def _get_view(self, version, job_id):
-        """Used to get data for processing"""
-        return jsonify(Version=version, ID=job_id)
+    def _get_view(self, version, project, job_id):
+        """Used to get results for a job"""
+        return jsonify(Version=version, Project=project, ID=job_id)
 
-    def _post_view(self, version, job_id):
+    def _put_view(self, version, project, job_id):
         """Used to deliver data when job is done"""
         # Call to handle data and get status:
 
         if request.headers['Content-Type'] == 'application/json':
-            message, status = self._post_json(version, job_id)
+            message, status = self._put_json(version, project, job_id)
 
         # elif request.headers['Content-Type'] == 'text/plain':
         #     message = "Text Message: " + request.data
         #    status = 0
         #
         # elif request.headers['Content-Type'] == 'application/octet-stream':
-        #     message, status = self._post_file(version, job_id)
+        #     message, status = self._put_file(version, project, job_id)
 
         else:
             abort(415)
@@ -99,10 +106,10 @@ class JobData(BasicJobView):
                      "".format(job_id, g.user.username, status), "warning")
 
         # Return status:
-        return jsonify(Version=version, ID=job_id, Call="POST",
-                       Message=message, Status=status)
+        return jsonify(Version=version, ID=job_id, Call="PUT",
+                       Message=message, Status=status, Project=project)
 
-    def _post_json(self, version, job_id):
+    def _put_json(self, version, project, job_id):
         """Used to deliver JSON data when job is done"""
         json = check_json(request.json, l2i_prototype)
         status = -1 * ("JSONError" in json.keys())
@@ -110,7 +117,7 @@ class JobData(BasicJobView):
             abort(400)
         return json, status
 
-    def _post_file(self, version, job_id):
+    def _put_file(self, version, project, job_id):
         """Used to deliver file data when job is done"""
         theFile = request.files['file']
         filename = secure_filename(theFile.filename)
@@ -127,25 +134,39 @@ class JobData(BasicJobView):
 
 class JobStatus(BasicJobView):
     """Get and set jobstatus as JSON object"""
-    def _get_view(self, version, job_id):
+    def _get_view(self, version, project, job_id):
         """Used to get job status"""
-        return jsonify(Version=version, ID=job_id)
+        return jsonify(Version=version, Project=project, ID=job_id)
 
-    def _post_view(self, version, job_id):
+    def _put_view(self, version, project, job_id):
         """Used to update job status"""
         self.log("Status of job {0} was updated by {1}.".format(
             job_id, g.user.username), "info")
-        return jsonify(Version=version, ID=job_id, Call="POST",
+        return jsonify(Version=version, Project=project, ID=job_id,
+                       Call="PUT", Status=request.json)
+
+
+class JobOutput(BasicJobView):
+    """Get and set job output as JSON object"""
+    def _get_view(self, version, project, job_id):
+        """Used to get job output"""
+        return jsonify(Version=version, Project=project, ID=job_id)
+
+    def _put_view(self, version, project, job_id):
+        """Used to update job output"""
+        self.log("Output of job {0} was updated by {1}.".format(
+            job_id, g.user.username), "info")
+        return jsonify(Version=version, Project=project, ID=job_id, Call="PUT",
                        Status=request.json)
 
 
 class JobClaim(BasicJobView):
     """Claim job"""
-    def _get_view(self, version, job_id):
+    def _get_view(self, version, project, job_id):
         """Used to see which Worker has claimed job and at what time"""
-        return jsonify(Version=version, ID=job_id)
+        return jsonify(Version=version, Project=project, ID=job_id)
 
-    def _put_view(self, version, job_id):
+    def _put_view(self, version, project, job_id):
         """
         Used to claim job for Worker. Should return error if job is
         already claimed.
@@ -155,19 +176,20 @@ class JobClaim(BasicJobView):
             time = datetime.utcnow().isoformat()
             self.log("Job {0} claimed by worker {1}".format(job_id, worker_id),
                      "info")
-            return jsonify(Version=version, ID=job_id, Call="PUT", Time=time,
-                           ClaimedBy=worker_id)
+            return jsonify(Version=version, Project=project, ID=job_id,
+                           Call="PUT", Time=time, ClaimedBy=worker_id)
         else:
             self.log("Unknown worker {1} tried claiming job {0}.".format(
                 job_id, worker_id), "warning")
-            return jsonify(Version=version, ID=job_id, Call="PUT",
-                           Message="Worker ID not recognised.")
+            return jsonify(Version=version, Project=project, ID=job_id,
+                           Call="PUT", Message="Worker ID not recognised.")
 
-    def _delete_view(self, version, job_id):
+    def _delete_view(self, version, project, job_id):
         """Used to free a job"""
         self.log("Job {0} was unlocked  by {1}.".format(
             job_id, g.user.username), "info")
-        return jsonify(Version=version, ID=job_id, Call="DELETE")
+        return jsonify(Version=version, Project=project, ID=job_id,
+                       Call="DELETE")
 
     def _verify_worker(self, worker_id):
         """Used to verify the worker ID"""

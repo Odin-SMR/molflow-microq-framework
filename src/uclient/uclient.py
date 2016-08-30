@@ -1,7 +1,9 @@
 #! /usr/bin/env python
 import json
+import urllib
 import requests
-import argparse as ap
+
+from utils.validate import validate_project_name
 
 
 class UClientError(Exception):
@@ -19,9 +21,11 @@ class UClient(object):
 
     def __init__(self, apiroot, project, username=None, password=None,
                  credentials_file=None, verbose=False):
+        if not validate_project_name(project):
+            raise UClientError('Unsupported project name')
         self.uri = apiroot.strip('/')
-        # TODO: Add project support to api
         self.project = project
+        self.project_uri = self.uri + '/v4/{}'.format(project)
         self.verbose = verbose
         self.credentials = self._get_credentials(
             username, password, credentials_file)
@@ -62,12 +66,14 @@ class UClient(object):
 
     def get_job_list(self):
         """Request list of jobs from server."""
-        return self._call_api(self.uri + "/v4/jobs")
+        return self._call_api(self.project_uri + "/jobs")
 
     def fetch_job(self, job_type=None):
         """Request an unprocessed job from server."""
-        # TODO: Add job type support to api
-        return self._call_api(self.uri + "/v4/jobs/fetch")
+        url = self.project_uri + "/jobs/fetch"
+        if job_type:
+            url += '?{}'.format(urllib.urlencode({'type': job_type}))
+        return self._call_api(url)
 
     def claim_job(self, url, worker_name, token=None):
         """Claim job from server"""
@@ -79,15 +85,21 @@ class UClient(object):
         """Get data to work with"""
         return self._call_api(url)
 
+    def update_output(self, url, output, token=None):
+        """Update output of job."""
+        return self._call_api(url, 'PUT', json={'Message': output},
+                              headers={'Content-Type': "application/json"},
+                              auth=self.auth)
+
     def update_status(self, url, status, token=None):
         """Update status of job."""
-        return self._call_api(url, 'POST', json=status,
+        return self._call_api(url, 'PUT', json=status,
                               headers={'Content-Type': "application/json"},
                               auth=self.auth)
 
     def deliver_job(self, url, result, token=None):
         """Deliver finished job."""
-        return self._call_api(url, 'POST', json=result,
+        return self._call_api(url, 'PUT', json=result,
                               headers={'Content-Type': "application/json"},
                               auth=self.auth)
 
@@ -146,8 +158,7 @@ class Job(object):
     @property
     def url_output(self):
         """Send output from job to this url"""
-        # TODO
-        return
+        return self.data["Job"]["URLS"]["URL-output"]
 
     @property
     def url_input_data(self):
@@ -169,19 +180,3 @@ class Job(object):
 
     def send_status(self, msg):
         self.api.update_status(self.url_status, {'Message': msg})
-
-if __name__ == "__main__":
-    # TODO: Move to worker's main.
-    parser = ap.ArgumentParser()
-    parser.add_argument('-u', "--user", help="user name")
-    parser.add_argument('-p', "--password", default="", help="user password")
-    parser.add_argument('-c', "--credentials", default="credentials.json",
-                        help="credentials file to load")
-    parser.add_argument('-a', "--apiroot",
-                        default="http://localhost:5000/rest_api",
-                        help="URI of the API root")
-    parser.add_argument('-v', "--verbose", help="use verbose output",
-                        action="store_true")
-    args = parser.parse_args()
-    api = UClient(args.apiroot, args.user, args.password, args.credentials,
-                  verbose=args.verbose)

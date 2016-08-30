@@ -12,7 +12,7 @@ class TestUWorker(unittest.TestCase):
             'UWORKER_JOB_CMD': 'echo test',
             'UWORKER_JOB_TYPE': 'test',
             'UWORKER_API_ROOT': 'http://localhost:5000/rest_api',
-            'UWORKER_API_PROJECT': 'test_project',
+            'UWORKER_API_PROJECT': 'testproject',
             'UWORKER_API_USERNAME': 'worker1',
             'UWORKER_API_PASSWORD': 'sqrrl',
         }

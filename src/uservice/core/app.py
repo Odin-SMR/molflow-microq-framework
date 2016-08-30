@@ -1,11 +1,15 @@
 from flask import Flask, g, request, abort, jsonify, url_for, make_response
 from flask.ext.sqlalchemy import SQLAlchemy
 from uservice.core.users import get_user_db, auth
-from uservice.views.basic_views import ListJobs, FetchNextJob, BasicView
-from uservice.views.job_views import JobClaim, JobStatus, JobData
+from uservice.views.basic_views import (
+    ListProjects, ListJobs, FetchNextJob, BasicView)
+from uservice.views.job_views import (
+    JobClaim, JobStatus, JobInput, JobResult, JobOutput)
+from uservice.views.project_views import ProjectStatus
 from uservice.views.site_views import (JobStatusHumanReadable,
                                        ListJobsHumanReadable,
-                                       ServerStatusHumanReadable)
+                                       ServerStatusHumanReadable,
+                                       ProjectStatusHumanReadable)
 
 
 class JobServer(Flask):
@@ -29,48 +33,84 @@ class JobServer(Flask):
             methods=["GET"]
             )
         self.add_url_rule(
+            # GET human readable project status
+            '/<project>',
+            view_func=ProjectStatusHumanReadable.as_view('projectstatusshr'),
+            methods=["GET"]
+            )
+
+        self.add_url_rule(
             # GET human readable list of jobs
-            '/jobs',
+            '/<project>/jobs',
             view_func=ListJobsHumanReadable.as_view('listjobshr'),
             methods=["GET"]
             )
         self.add_url_rule(
             # GET human readable job status
-            '/jobs/<job_id>',
+            '/<project>/jobs/<job_id>',
             view_func=JobStatusHumanReadable.as_view('jobstatushr'),
             methods=["GET"]
             )
 
         # Rules for worker access:
         self.add_url_rule(
-            # GET list of jobs
-            '/rest_api/<version>/jobs',
-            view_func=ListJobs.as_view('listjobs'),
+            # GET list of projects
+            '/rest_api/<version>/projects',
+            view_func=ListProjects.as_view('listprojects'),
             methods=["GET"]
             )
         self.add_url_rule(
+            # GET project info.
+            # PUT to create a new project if it does not already exist.
+            # DELETE to remove project and all its jobs (dangerous!)?
+            '/rest_api/<version>/<project>',
+            view_func=ProjectStatus.as_view('projectstatus'),
+            methods=["GET", "PUT"]
+            )
+        self.add_url_rule(
+            # GET list of jobs, POST to add new jobs.
+            '/rest_api/<version>/<project>/jobs',
+            view_func=ListJobs.as_view('listjobs'),
+            methods=["GET", "POST"]
+            )
+        self.add_url_rule(
             # GET next job URI etc.
-            '/rest_api/<version>/jobs/fetch',
+            '/rest_api/<version>/<project>/jobs/fetch',
             view_func=FetchNextJob.as_view('fetchnextjob'),
             methods=["GET"]
             )
         self.add_url_rule(
-            # GET and POST job status
-            '/rest_api/<version>/jobs/<job_id>',
+            # GET and PUT job status
+            '/rest_api/<version>/<project>/jobs/<job_id>/status',
             view_func=JobStatus.as_view('jobstatus'),
-            methods=["GET", "POST"]
+            methods=["GET", "PUT"]
             )
         self.add_url_rule(
             # PUT to claim job, GET to get claim status, DELETE to free job
-            '/rest_api/<version>/jobs/<job_id>/claim',
+            # TODO: Remove DELETE?
+            '/rest_api/<version>/<project>/jobs/<job_id>/claim',
             view_func=JobClaim.as_view('jobclaim'),
             methods=["GET", "PUT", "DELETE"]
             )
         self.add_url_rule(
-            # GET to get data to process, POST to deliver when done.
-            '/rest_api/<version>/jobs/<job_id>/data',
-            view_func=JobData.as_view('jobdata'),
-            methods=["GET", "POST"]
+            # GET job input data to process (also from fetch).
+            '/rest_api/<version>/<project>/jobs/<job_id>/input',
+            view_func=JobInput.as_view('jobdata'),
+            methods=["GET"]
+            )
+        self.add_url_rule(
+            # GET job result data, PUT to deliver result when done.
+            # TODO: Delete to remove results and make it available for
+            #       processing again?
+            '/rest_api/<version>/<project>/jobs/<job_id>/result',
+            view_func=JobResult.as_view('jobresult'),
+            methods=["GET", "PUT"]
+            )
+        self.add_url_rule(
+            # GET and PUT job stdout/stderr output
+            '/rest_api/<version>/<project>/jobs/<job_id>/output',
+            view_func=JobOutput.as_view('joboutput'),
+            methods=["GET", "PUT"]
             )
 
 
