@@ -23,10 +23,16 @@ class TestUClient(unittest.TestCase):
         self._credentials = {"username": "worker1",
                              "password": "sqrrl"}
 
-    def get_client(self, credentials=None, project='default_project'):
+    def get_client(self, credentials=None, project='defaultproject'):
         credentials = (credentials if credentials is not None
                        else self._credentials)
         return UClient(self._apiroot, project, verbose=True, **credentials)
+
+    def test_bad_project_name(self):
+        bad_names = ['', '1', 'test;']
+        for name in bad_names:
+            with self.assertRaises(UClientError):
+                self.get_client(project=name)
 
     def test_api_exception(self):
         """Test api exception"""
@@ -88,6 +94,7 @@ class TestUClient(unittest.TestCase):
 
         result = self._mock_results
 
+        api.update_output(job.url_output, "Processing...")
         job.send_status("Work done")
 
         r = api.deliver_job(job.url_deliver, result)

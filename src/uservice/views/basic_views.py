@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from uservice.core.users import auth
 from uservice.core.userver_log import logging
 from uservice.datamodel.model import Level1
+from utils.validate import validate_project_name
 
 
 class BasicView(MethodView):
@@ -14,28 +15,24 @@ class BasicView(MethodView):
     def get(self, version):
         """GET"""
         self._check_version(version)
-
         return self._get_view(version)
 
     @auth.login_required
     def put(self, version):
         """PUT"""
         self._check_version(version)
-
         return self._put_view(version)
 
     @auth.login_required
     def post(self, version):
         """POST"""
         self._check_version(version)
-
         return self._post_view(version)
 
     @auth.login_required
     def delete(self, version):
         """DELETE"""
         self._check_version(version)
-
         return self._delete_view(version)
 
     def _get_view(self, version):
@@ -87,7 +84,74 @@ class BasicView(MethodView):
             logging.info(message)
 
 
-class ListJobs(BasicView):
+class BasicProjectView(BasicView):
+    """Base class for project views"""
+    def get(self, version, project):
+        """GET"""
+        self._check_version(version)
+        self._check_project(project)
+        return self._get_view(version, project)
+
+    @auth.login_required
+    def put(self, version, project):
+        """PUT"""
+        self._check_version(version)
+        self._check_project(project)
+        return self._put_view(version, project)
+
+    @auth.login_required
+    def post(self, version, project):
+        """POST"""
+        self._check_version(version)
+        self._check_project(project)
+        return self._post_view(version, project)
+
+    @auth.login_required
+    def delete(self, version, project):
+        """DELETE"""
+        self._check_version(version)
+        self._check_project(project)
+        return self._delete_view(version, project)
+
+    def _get_view(self, version, project):
+        """
+        Dummy method which should be over loaded by derived classes
+        """
+        abort(405)
+
+    def _put_view(self, version, project):
+        """
+        Dummy method which should be over loaded by derived classes
+        """
+        abort(405)
+
+    def _post_view(self, version, project):
+        """
+        Dummy method which should be over loaded by derived classes
+        """
+        abort(405)
+
+    def _delete_view(self, version, project):
+        """
+        Dummy method which should be over loaded by derived classes
+        """
+        abort(405)
+
+    def _check_project(self, project):
+        if not validate_project_name(project):
+            abort(404)
+
+
+class ListProjects(BasicView):
+    """View for listing projects"""
+    def _get_view(self, version):
+        """
+        Should return a JSON object with a list of projects.
+        """
+        return jsonify(Version=version)
+
+
+class ListJobs(BasicProjectView):
     """View for listing jobs as JSON object"""
     _translate_backend = {'B': 'AC1', 'C': 'AC2', 'AC1': 'AC1', 'AC2': 'AC2'}
 
@@ -98,19 +162,29 @@ class ListJobs(BasicView):
         make_session = sessionmaker(bind=self._engine)
         self._session = make_session()
 
-    def _get_view(self, version):
+    # TODO: Use url parameter 'type'
+    def _get_view(self, version, project):
         """
         Should return a JSON object with a list of jobs with URIs for
         getting data etc.
         """
         jobs = self._session.query(Level1).all()
-        job_list = self._make_job_list(jobs)
-        return jsonify(Version=version, Jobs=job_list)
+        job_list = self._make_job_list(project, jobs)
+        return jsonify(Version=version, Project=project, Jobs=job_list)
 
-    def _make_job_list(self, jobs):
-        return self._fake_job_list(jobs)
+    def _post_view(self, version, project):
+        """
+        Used to add jobs to the database.
+        """
+        jobs = request.json
+        # TODO: Verify jobs
+        # TODO: Add to database
+        return jsonify(Version=version, Project=project, nr=len(jobs))
 
-    def _fake_job_list(self, jobs):
+    def _make_job_list(self, project, jobs):
+        return self._fake_job_list(project, jobs)
+
+    def _fake_job_list(self, project, jobs):
         import requests
         r = requests.get("http://malachite.rss.chalmers.se/rest_api/v4/"
                          "freqmode_info/2015-01-03/AC1/2/")
@@ -118,14 +192,18 @@ class ListJobs(BasicView):
         for n, job in enumerate(job_list):
             scan_id = job["ScanID"]
             job_list[n]["URLS"]["URL-claim"] = (
-                "{0}rest_api/v4/jobs/{1}/claim").format(
-                    request.url_root, scan_id)
+                "{0}rest_api/v4/{1}/jobs/{2}/claim").format(
+                    request.url_root, project, scan_id)
             job_list[n]["URLS"]["URL-deliver"] = (
-                "{0}rest_api/v4/jobs/{1}/data").format(
-                    request.url_root, scan_id)
+                "{0}rest_api/v4/{1}/jobs/{2}/result").format(
+                    request.url_root, project, scan_id)
             job_list[n]["URLS"]["URL-status"] = (
-                "{0}rest_api/v4/jobs/{1}").format(
-                    request.url_root, scan_id)
+                "{0}rest_api/v4/{1}/jobs/{2}/status").format(
+                    request.url_root, project, scan_id)
+            job_list[n]["URLS"]["URL-output"] = (
+                "{0}rest_api/v4/{1}/jobs/{2}/output").format(
+                    request.url_root, project, scan_id)
+
         return job_list
 
     def _make_job_dict(self, job):
@@ -191,13 +269,7 @@ class FetchNextJob(ListJobs):
     def __init__(self):
         super(FetchNextJob, self).__init__()
 
-    def get(self, version):
-        """GET"""
-        self._check_version(version)
-
-        return self._get_view(version)
-
-    def _get_view(self, version):
+    def _get_view(self, version, project):
         """
         Should return JSON object with URI for getting/delivering data
         etc. after locking job.
@@ -212,5 +284,5 @@ class FetchNextJob(ListJobs):
             * Easier to debug/get status if fetching can be done w/o auth
         """
         jobs = [self._session.query(Level1).first()]
-        job_list = self._make_job_list(jobs)
+        job_list = self._make_job_list(project, jobs)
         return jsonify(Version=version, Job=job_list[0])
