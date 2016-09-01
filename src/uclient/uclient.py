@@ -78,7 +78,7 @@ class UClient(object):
     def claim_job(self, url, worker_name, token=None):
         """Claim job from server"""
         # TODO: Worker node info
-        return self._call_api(url, 'PUT', data={"worker": worker_name},
+        return self._call_api(url, 'PUT', json={"Worker": worker_name},
                               auth=self.auth)
 
     def get_data(self, url):
@@ -87,13 +87,13 @@ class UClient(object):
 
     def update_output(self, url, output, token=None):
         """Update output of job."""
-        return self._call_api(url, 'PUT', json={'Message': output},
+        return self._call_api(url, 'PUT', json={'Output': output},
                               headers={'Content-Type': "application/json"},
                               auth=self.auth)
 
     def update_status(self, url, status, token=None):
         """Update status of job."""
-        return self._call_api(url, 'PUT', json=status,
+        return self._call_api(url, 'PUT', json={'Status': status},
                               headers={'Content-Type': "application/json"},
                               auth=self.auth)
 
@@ -162,12 +162,11 @@ class Job(object):
 
     @property
     def url_input_data(self):
-        # TODO: Should have a more general name than URL-spectra
-        return self.data["Job"]["URLS"]["URL-spectra"]
+        return self.data["Job"]["URLS"]["URL-input"]
 
     @property
     def url_deliver(self):
-        return self.data["Job"]["URLS"]["URL-deliver"]
+        return self.data["Job"]["URLS"]["URL-result"]
 
     def claim(self, worker='anonymous'):
         if self.claimed:
@@ -178,5 +177,8 @@ class Job(object):
         except UClientError:
             raise
 
-    def send_status(self, msg):
-        self.api.update_status(self.url_status, {'Message': msg})
+    def send_status(self, status):
+        self.api.update_status(self.url_status, status)
+
+    def send_output(self, output):
+        self.api.update_output(self.url_output, output)

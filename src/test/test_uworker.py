@@ -1,9 +1,9 @@
 import os
-import unittest
+from test.testbase import BaseTest
 from uworker import uworker
 
 
-class TestUWorker(unittest.TestCase):
+class TestUWorker(BaseTest):
 
     def setUp(self):
         self.env = {
@@ -11,13 +11,18 @@ class TestUWorker(unittest.TestCase):
             'UWORKER_CONTAINER_NAME': 'testcontainer',
             'UWORKER_JOB_CMD': 'echo test',
             'UWORKER_JOB_TYPE': 'test',
-            'UWORKER_API_ROOT': 'http://localhost:5000/rest_api',
-            'UWORKER_API_PROJECT': 'testproject',
-            'UWORKER_API_USERNAME': 'worker1',
-            'UWORKER_API_PASSWORD': 'sqrrl',
+            'UWORKER_API_ROOT': self._apiroot,
+            'UWORKER_API_PROJECT': self._project,
+            'UWORKER_API_USERNAME': self._username,
+            'UWORKER_API_PASSWORD': self._password,
         }
         for k, v in self.env.items():
             os.environ[k] = v
+        self._insert_job({'id': '42', 'type': 'test_type',
+                          'meta': {'data': None}})
+
+    def tearDown(self):
+        self._delete_test_project()
 
     def test_bad_config(self):
         """Test missing environment variables"""

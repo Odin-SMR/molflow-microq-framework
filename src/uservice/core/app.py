@@ -62,10 +62,11 @@ class JobServer(Flask):
         self.add_url_rule(
             # GET project info.
             # PUT to create a new project if it does not already exist.
-            # DELETE to remove project and all its jobs (dangerous!)?
+            # DELETE to remove project and all its jobs.
+            # TODO: Delete should only be allowed by privileged user.
             '/rest_api/<version>/<project>',
             view_func=ProjectStatus.as_view('projectstatus'),
-            methods=["GET", "PUT"]
+            methods=["GET", "PUT", "DELETE"]
             )
         self.add_url_rule(
             # GET list of jobs, POST to add new jobs.
@@ -117,8 +118,10 @@ class JobServer(Flask):
 # initialisation
 app = JobServer(__name__)
 app.config['SECRET_KEY'] = 'verklig nytta av min hermodskurs i mord'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
+# TODO: Use mysql?
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/db.sqlite'
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
 # extensions
@@ -152,6 +155,11 @@ def method_not_allowed(error):
     return make_response(jsonify({'error': 'Method not allowed'}), 405)
 
 
+@app.errorhandler(409)
+def conflict(error):
+    return make_response(jsonify({'error': 'Conflict'}), 409)
+
+
 @app.errorhandler(415)
 def unsupported_media_type(error):
     return make_response(jsonify({'error': 'Unsupported media type'}), 415)
@@ -172,11 +180,6 @@ def service_unavailable(error):
     return service_unavailable(jsonify({'error': 'Service unavailable'}), 503)
 
 
-#@app.errorhandler(507)
-#def insufficient_storage(error):
-#    return service_unavailable(jsonify({'error': 'Insufficient storage'}), 507)
-
-
 # user admininstration and authentication
 @auth.verify_password
 def verify_password(username_or_token, password):
@@ -191,7 +194,7 @@ def verify_password(username_or_token, password):
     return True
 
 
-@ app.route('/rest_api/admin/users', methods=['POST'])
+@app.route('/rest_api/admin/users', methods=['POST'])
 def new_user():
     username = request.json.get('username')
     password = request.json.get('password')
