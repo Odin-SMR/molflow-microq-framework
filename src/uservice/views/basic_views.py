@@ -1,17 +1,40 @@
 """ Basic views for REST api
 """
-from flask import jsonify, abort, make_response, request
+from datetime import datetime
+
+from flask import jsonify, abort as flask_abort, make_response, request
 from flask.views import MethodView
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from uservice.core.users import auth
-from uservice.core.userver_log import logging
-from uservice.datamodel.model import Level1
+
 from utils.validate import validate_project_name
+from utils.defs import JOB_STATES
+from utils.logs import get_logger
+
+from uservice.core.users import auth
+# from uservice.datamodel.model import Level1
+from uservice.database.basedb import InMemoryDatabase
+
+DATABASES = {}
+
+
+def abort(status_code, message=None):
+    """
+    Return response with a certain status code and the json data:
+    {error: message}
+    """
+    if not message:
+        flask_abort(status_code)
+    else:
+        return make_response(jsonify(error=message), status_code)
 
 
 class BasicView(MethodView):
     """Base class for views"""
+    def __init__(self):
+        self.log = get_logger('UService')
+        super(BasicView, self).__init__()
+
     def get(self, version):
         """GET"""
         self._check_version(version)
@@ -35,25 +58,25 @@ class BasicView(MethodView):
         self._check_version(version)
         return self._delete_view(version)
 
-    def _get_view(self, version):
+    def _get_view(self, *args):
         """
         Dummy method which should be over loaded by derived classes
         """
         abort(405)
 
-    def _put_view(self, version):
+    def _put_view(self, *args):
         """
         Dummy method which should be over loaded by derived classes
         """
         abort(405)
 
-    def _post_view(self, version):
+    def _post_view(self, *args):
         """
         Dummy method which should be over loaded by derived classes
         """
         abort(405)
 
-    def _delete_view(self, version):
+    def _delete_view(self, *args):
         """
         Dummy method which should be over loaded by derived classes
         """
@@ -68,24 +91,15 @@ class BasicView(MethodView):
     def unauthorized():
         return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
-    def log(self, message, level="info"):
-        if level.lower() == "debug":
-            logging.debug(message)
-        elif level.lower() == "info":
-            logging.info(message)
-        elif level.lower() == "warning":
-            logging.warning(message)
-        elif level.lower() == "error":
-            logging.error(message)
-        elif level.lower() == "critical":
-            logging.critical(message)
-        else:
-            message += " (Unknown logging level {0})".format(level)
-            logging.info(message)
-
 
 class BasicProjectView(BasicView):
     """Base class for project views"""
+
+    def _get_database(self, project):
+        if project not in DATABASES:
+            DATABASES[project] = InMemoryDatabase(project)
+        return DATABASES[project]
+
     def get(self, version, project):
         """GET"""
         self._check_version(version)
@@ -112,30 +126,6 @@ class BasicProjectView(BasicView):
         self._check_version(version)
         self._check_project(project)
         return self._delete_view(version, project)
-
-    def _get_view(self, version, project):
-        """
-        Dummy method which should be over loaded by derived classes
-        """
-        abort(405)
-
-    def _put_view(self, version, project):
-        """
-        Dummy method which should be over loaded by derived classes
-        """
-        abort(405)
-
-    def _post_view(self, version, project):
-        """
-        Dummy method which should be over loaded by derived classes
-        """
-        abort(405)
-
-    def _delete_view(self, version, project):
-        """
-        Dummy method which should be over loaded by derived classes
-        """
-        abort(405)
 
     def _check_project(self, project):
         if not validate_project_name(project):
@@ -165,10 +155,12 @@ class ListJobs(BasicProjectView):
     # TODO: Use url parameter 'type'
     def _get_view(self, version, project):
         """
-        Should return a JSON object with a list of jobs with URIs for
+        Return a JSON object with a list of jobs with URIs for
         getting data etc.
+        # TODO: Should only return unclaimed jobs?
         """
-        jobs = self._session.query(Level1).all()
+        db = self._get_database(project)
+        jobs = list(db.get_jobs(fields=['id', 'meta']))
         job_list = self._make_job_list(project, jobs)
         return jsonify(Version=version, Project=project, Jobs=job_list)
 
@@ -176,35 +168,38 @@ class ListJobs(BasicProjectView):
         """
         Used to add jobs to the database.
         """
-        jobs = request.json
-        # TODO: Verify jobs
-        # TODO: Add to database
-        return jsonify(Version=version, Project=project, nr=len(jobs))
+        job = request.json
+        # Default values
+        job['claimed'] = False
+        job['current_status'] = JOB_STATES.available
+        job['added_timestamp'] = datetime.now()
+
+        job_id = job['id']
+        db = self._get_database(project)
+        if db.job_exists(job_id):
+            return abort(409, 'Job already exists')
+        db.insert_job(job_id, job)
+        return jsonify(Version=version, Project=project, ID=job_id), 201
 
     def _make_job_list(self, project, jobs):
-        return self._fake_job_list(project, jobs)
+        return [
+            self._make_job(project, job['id'], job['meta'])
+            for job in jobs
+        ]
 
-    def _fake_job_list(self, project, jobs):
-        import requests
-        r = requests.get("http://malachite.rss.chalmers.se/rest_api/v4/"
-                         "freqmode_info/2015-01-03/AC1/2/")
-        job_list = r.json()["Info"]
-        for n, job in enumerate(job_list):
-            scan_id = job["ScanID"]
-            job_list[n]["URLS"]["URL-claim"] = (
-                "{0}rest_api/v4/{1}/jobs/{2}/claim").format(
-                    request.url_root, project, scan_id)
-            job_list[n]["URLS"]["URL-deliver"] = (
-                "{0}rest_api/v4/{1}/jobs/{2}/result").format(
-                    request.url_root, project, scan_id)
-            job_list[n]["URLS"]["URL-status"] = (
-                "{0}rest_api/v4/{1}/jobs/{2}/status").format(
-                    request.url_root, project, scan_id)
-            job_list[n]["URLS"]["URL-output"] = (
-                "{0}rest_api/v4/{1}/jobs/{2}/output").format(
-                    request.url_root, project, scan_id)
+    def _make_job(self, project, job_id, meta):
 
-        return job_list
+        def make_url(endpoint, job_id):
+            return "{0}rest_api/v4/{1}/jobs/{2}/{3}".format(
+                request.url_root, project, job_id, endpoint)
+
+        if 'URLS' not in meta:
+            meta['URLS'] = {}
+
+        for endpoint in ['claim', 'result', 'status', 'output', 'input']:
+            meta["URLS"]["URL-{}".format(endpoint)] = make_url(
+                endpoint, job_id)
+        return meta
 
     def _make_job_dict(self, job):
             job_dict = {}
@@ -269,20 +264,25 @@ class FetchNextJob(ListJobs):
     def __init__(self):
         super(FetchNextJob, self).__init__()
 
+    # TODO: Use url parameter 'type'
     def _get_view(self, version, project):
         """
-        Should return JSON object with URI for getting/delivering data
-        etc. after locking job.
+        Should return JSON object with URI for getting/delivering data etc.
 
-        Later:
-            Separate fetching and claiming, so that the returned object
-            contains URIs for claming job, as well as for getting/delivering
-            data.
-            On the other hand, why?
-            * Because it gives a neater interface, and because the claiming
-              URI can be put in the object and included in the listing.
-            * Easier to debug/get status if fetching can be done w/o auth
+        Separate fetching and claiming, so that the returned object
+        contains URIs for claming job, as well as for getting/delivering
+        data.
+
+        why?
+        * Because it gives a neater interface, and because the claiming
+          URI can be put in the object and included in the listing.
+        * Easier to debug/get status if fetching can be done w/o auth.
         """
-        jobs = [self._session.query(Level1).first()]
-        job_list = self._make_job_list(project, jobs)
-        return jsonify(Version=version, Job=job_list[0])
+        db = self._get_database(project)
+        try:
+            job = next(db.get_jobs(match={'claimed': False},
+                                   fields=['id', 'meta']))
+        except StopIteration:
+            return abort(404, 'No unclaimed jobs available')
+        job = self._make_job(project, job['id'], job['meta'])
+        return jsonify(Version=version, Job=job)

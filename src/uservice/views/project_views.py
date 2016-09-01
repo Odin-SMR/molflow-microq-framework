@@ -1,5 +1,5 @@
 from flask import jsonify
-from uservice.views.basic_views import BasicProjectView
+from uservice.views.basic_views import BasicProjectView, DATABASES
 
 
 class ProjectStatus(BasicProjectView):
@@ -11,4 +11,10 @@ class ProjectStatus(BasicProjectView):
 
     def _put_view(self, version, project):
         """Used to create project"""
+        return jsonify(Version=version, Project=project)
+
+    def _delete_view(self, version, project):
+        """Used to delete project"""
+        if project in DATABASES:
+            del DATABASES[project]
         return jsonify(Version=version, Project=project)

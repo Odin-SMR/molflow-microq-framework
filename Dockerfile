@@ -8,8 +8,10 @@ run apt-get update && apt-get install -y \
     --no-install-recommends && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+# TODO: Pin with version
 run pip install flask flask-bootstrap flask-httpauth flask-restful \
-    passlib flask-sqlalchemy sqlalchemy pymysql jsonschema jsl
+    passlib flask-sqlalchemy sqlalchemy pymysql jsonschema jsl \
+    ConcurrentLogHandler
 
 #************* DEPENDENCIES
 
