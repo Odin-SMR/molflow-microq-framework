@@ -129,6 +129,12 @@ user_db = SQLAlchemy(app)
 User = get_user_db(user_db, app)
 
 
+@app.teardown_appcontext
+def close_db(error):
+    for db in getattr(g, 'job_databases', {}).values():
+        db.close()
+
+
 # error handling
 @app.errorhandler(400)
 def bad_request(error):

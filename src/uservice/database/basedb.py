@@ -1,5 +1,15 @@
 from collections import OrderedDict
 
+from flask import g
+
+
+def get_db(project, cls, **dbsettings):
+    if not hasattr(g, 'job_databases'):
+        g.job_databases = {}
+    if project not in g.job_databases:
+        g.job_databases[project] = cls(project, **dbsettings)
+    return g.job_databases[project]
+
 
 class DBError(Exception):
     pass
@@ -10,10 +20,13 @@ class BaseDatabaseAPI(object):
 
     Inherit and implement:
 
+    * __init__
+    * close
     * get_jobs
     * job_exists
     * _update_job
     * _insert_job
+    * drop
     """
     # TODO: Put this in a job model
     CLAIMED = 'claimed'
@@ -61,12 +74,26 @@ class BaseDatabaseAPI(object):
         # TODO
         pass
 
+    def close(self):
+        raise NotImplementedError
+
+    def drop(self):
+        raise NotImplementedError
+
 
 class InMemoryDatabase(BaseDatabaseAPI):
     """Simple dict based database for testing"""
+
+    DATABASES = {}
+
     def __init__(self, project):
         super(InMemoryDatabase, self).__init__(project)
-        self.db = OrderedDict()
+        if project not in InMemoryDatabase.DATABASES:
+            InMemoryDatabase.DATABASES[project] = OrderedDict()
+        self.db = InMemoryDatabase.DATABASES[project]
+
+    def close(self):
+        pass
 
     def get_jobs(self, job_id=None, match=None, fields=None):
         if job_id:
@@ -102,3 +129,7 @@ class InMemoryDatabase(BaseDatabaseAPI):
 
     def job_exists(self, job_id):
         return job_id in self.db
+
+    def drop(self):
+        InMemoryDatabase.DATABASES[self.project] = OrderedDict()
+        self.db = InMemoryDatabase.DATABASES[self.project]
