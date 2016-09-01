@@ -13,9 +13,7 @@ from utils.logs import get_logger
 
 from uservice.core.users import auth
 # from uservice.datamodel.model import Level1
-from uservice.database.basedb import InMemoryDatabase
-
-DATABASES = {}
+from uservice.database.basedb import get_db, InMemoryDatabase
 
 
 def abort(status_code, message=None):
@@ -96,9 +94,8 @@ class BasicProjectView(BasicView):
     """Base class for project views"""
 
     def _get_database(self, project):
-        if project not in DATABASES:
-            DATABASES[project] = InMemoryDatabase(project)
-        return DATABASES[project]
+        # TODO: Choose database based on config
+        return get_db(project, InMemoryDatabase)
 
     def get(self, version, project):
         """GET"""
