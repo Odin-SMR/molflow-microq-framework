@@ -15,6 +15,27 @@ webapi:
   links:
     - mysqlhost
 
+uworker:
+  image: docker2.molflow.com/devops/odinapi_mcr
+  # Normal entrypoint does not work because of mount of volume
+  entrypoint: [python, /app/uworker/uworker.py]
+  # For interactive mode
+  #stdin_open: true
+  #tty: true
+  environment:
+    - UWORKER_HOSTNAME=test_host
+    - UWORKER_CONTAINER_NAME=test_container
+    - UWORKER_JOB_API_ROOT=http://webapi:5000/rest_api
+    - UWORKER_JOB_API_PROJECT=testproject
+    - UWORKER_JOB_API_USERNAME=worker1
+    - UWORKER_JOB_API_PASSWORD=sqrrl
+    - UWORKER_EXTERNAL_API_USERNAME=test
+    - UWORKER_EXTERNAL_API_PASSWORD=test
+  volumes:
+    - ./src/:/app
+  links:
+    - webapi
+
 mysqlhost:
   image: docker2.molflow.com/devops/hermod_mysql
   environment:

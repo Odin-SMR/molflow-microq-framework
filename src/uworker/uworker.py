@@ -151,24 +151,34 @@ class UWorker(object):
                                  stderr=subprocess.PIPE,
                                  universal_newlines=True)
         stdout_lines = iter(popen.stdout.readline, "")
+        stderr_lines = iter(popen.stderr.readline, "")
 
-        last_send = 0
-        send_interval = 5
+        def write_lines(what, lines, buffer):
+            buffer.write('******** %s ********\n\n' % what)
+            last_send = 0
+            send_interval = 5
+            for line in lines:
+                if url_output:
+                    buffer.write(line)
+                    if time() - last_send > send_interval:
+                        # TODO: Limit size of buffer
+                        self.api.update_output(url_output, buffer.getvalue())
+                        last_send = time()
+                if line.strip():
+                    self.log.info('Job %s output: %s' % (what, line))
+
         buffer = BytesIO()
-        for stdout_line in stdout_lines:
-            if url_output:
-                buffer.write(stdout_line)
-                if time() - last_send > send_interval:
-                    # TODO: Limit size of buffer
-                    self.api.update_output(url_output, buffer.getvalue())
-            self.log.info('Job output: %s' % stdout_line)
+        write_lines('stdout', stdout_lines, buffer)
+        write_lines('stderr', stderr_lines, buffer)
 
         popen.stdout.close()
+        popen.stderr.close()
+
         # TODO: Kill process if it takes too long before it exits
         return_code = popen.wait()
         msg = 'Job exited with code %r' % return_code
         if url_output:
-            buffer.write(msg)
+            buffer.write(msg + '\n')
             self.api.update_output(url_output, buffer.getvalue())
         if return_code != 0:
             self.log.warning(msg)

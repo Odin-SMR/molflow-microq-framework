@@ -1,14 +1,11 @@
 """ Basic views for REST api
 """
-from datetime import datetime
-
 from flask import jsonify, abort as flask_abort, make_response, request
 from flask.views import MethodView
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from utils.validate import validate_project_name
-from utils.defs import JOB_STATES
 from utils.logs import get_logger
 
 from uservice.core.users import auth
