@@ -1,6 +1,11 @@
 """
 Worker that performs jobs provided by a uservice api.
+
+ ---------          --------                      --------------
+ |Job API| <------> |Worker| - <Command> <------> |External API|
+ ---------          --------                      --------------
 """
+
 import os
 from sys import exit
 import signal
@@ -8,6 +13,7 @@ import subprocess
 import argparse
 from io import BytesIO
 from time import sleep, time
+
 from uclient.uclient import UClient, UClientError, Job
 from utils.logs import get_logger
 from utils.defs import JOB_STATES
@@ -23,11 +29,13 @@ def get_config():
         'job_command': os.environ['UWORKER_JOB_CMD'],
         'job_type': os.environ['UWORKER_JOB_TYPE'],
         # Default can be set by Dockerfile, can be overrided by user
-        'api_root': os.environ['UWORKER_API_ROOT'],
+        'api_root': os.environ['UWORKER_JOB_API_ROOT'],
         # Set by user
-        'api_project': os.environ['UWORKER_API_PROJECT'],
-        'api_username': os.environ.get('UWORKER_API_USERNAME'),
-        'api_password': os.environ.get('UWORKER_API_PASSWORD'),
+        'api_project': os.environ['UWORKER_JOB_API_PROJECT'],
+        'api_username': os.environ.get('UWORKER_JOB_API_USERNAME'),
+        'api_password': os.environ.get('UWORKER_JOB_API_PASSWORD'),
+        'external_username': os.environ.get('UWORKER_EXTERNAL_API_USERNAME'),
+        'external_password': os.environ.get('UWORKER_EXTERNAL_API_PASSWORD'),
     }
 
 
@@ -37,12 +45,30 @@ class UWorkerError(Exception):
 
 class UWorker(object):
     """
-    Flow:
-    1. Ask api for jobs to perform.
+    Worker flow
+    -----------
+
+    1. Ask job api for jobs to perform.
     2. Claim a job.
-    3. Call job command with input and deliver url as arguments.
+    3. Call job command with source and target url as arguments.
     4. Continuously send output from command to api.
-    5. If command exits with code != 0, send that info to api.
+    5. When command exits, send exit code to api and set job status to
+       finished if code == 0, else set status to failed.
+
+    The job command
+    ---------------
+
+    The worker will call the job command with an url that should
+    return input data and an url that the command should send the
+    results to.
+    The worker can also provide the command with credentials to the
+    target url if needed.
+
+    >> /path/to/command INPUT_URL [TARGET_URL USERNAME PASSWORD]]
+
+    The command should only exit successfully if the result was accepted
+    by the target api. The worker can then set the status of the job to
+    failed or finished by looking at the exit code of the command.
     """
     # Sleep this many seconds when no jobs are available
     IDLE_SLEEP = 1
@@ -66,6 +92,8 @@ class UWorker(object):
         self.api = UClient(config['api_root'], config['api_project'],
                            username=config['api_username'],
                            password=config['api_password'])
+        self.external_auth = (config['external_username'],
+                              config['external_password'])
         if start_service:
             self.alive = True
             signal.signal(signal.SIGINT, self.stop)
@@ -87,8 +115,12 @@ class UWorker(object):
                     sleep(self.IDLE_SLEEP)
                 elif self.claim_job(job):
                     job.send_status(JOB_STATES.started)
-                    self.do_job(job.url_input_data, job.url_deliver,
-                                job.url_output)
+                    success = self.do_job(
+                        job.url_source, job.url_target, job.url_output)
+                    if success:
+                        job.send_status(JOB_STATES.finished)
+                    else:
+                        job.send_status(JOB_STATES.failed)
                     self.job_count += 1
             except Exception as e:
                 self.log.exception('Unhandled exception: %s' % e)
@@ -109,11 +141,11 @@ class UWorker(object):
                 sleep(self.ERROR_SLEEP)
         return False
 
-    def do_job(self, url_input_data, url_deliver=None, url_output=None):
-        cmd = self.cmd + [url_input_data]
-        if url_deliver:
-            cmd.append(url_deliver)
-            cmd.extend(self.api.auth)
+    def do_job(self, url_source, url_target=None, url_output=None):
+        cmd = self.cmd + [url_source]
+        if url_target:
+            cmd.append(url_target)
+            cmd.extend(cred for cred in self.external_auth if cred)
         self.log.info('Starting job: %s' % cmd)
         popen = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
@@ -135,13 +167,15 @@ class UWorker(object):
         # TODO: Kill process if it takes too long before it exits
         return_code = popen.wait()
         msg = 'Job exited with code %r' % return_code
+        if url_output:
+            buffer.write(msg)
+            self.api.update_output(url_output, buffer.getvalue())
         if return_code != 0:
             self.log.warning(msg)
-            if url_output:
-                buffer.write(msg)
-                self.api.update_output(url_output, buffer.getvalue())
+            return False
         else:
             self.log.info(msg)
+            return True
 
 
 def get_argparser():

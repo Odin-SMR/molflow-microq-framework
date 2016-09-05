@@ -157,7 +157,7 @@ class ListJobs(BasicProjectView):
         # TODO: Should only return unclaimed jobs?
         """
         db = self._get_database(project)
-        jobs = list(db.get_jobs(fields=['id', 'meta']))
+        jobs = list(db.get_jobs(fields=['id', 'source_url', 'target_url']))
         job_list = self._make_job_list(project, jobs)
         return jsonify(Version=version, Project=project, Jobs=job_list)
 
@@ -166,11 +166,6 @@ class ListJobs(BasicProjectView):
         Used to add jobs to the database.
         """
         job = request.json
-        # Default values
-        job['claimed'] = False
-        job['current_status'] = JOB_STATES.available
-        job['added_timestamp'] = datetime.now()
-
         job_id = job['id']
         db = self._get_database(project)
         if db.job_exists(job_id):
@@ -180,80 +175,28 @@ class ListJobs(BasicProjectView):
 
     def _make_job_list(self, project, jobs):
         return [
-            self._make_job(project, job['id'], job['meta'])
+            self._make_job(project, job)
             for job in jobs
         ]
 
-    def _make_job(self, project, job_id, meta):
+    def _make_job(self, project, job_data):
+
+        job_id, source_url, target_url = (
+            job_data['id'], job_data['source_url'], job_data['target_url'])
 
         def make_url(endpoint, job_id):
             return "{0}rest_api/v4/{1}/jobs/{2}/{3}".format(
                 request.url_root, project, job_id, endpoint)
 
-        if 'URLS' not in meta:
-            meta['URLS'] = {}
+        job = {
+            'JobID': job_id,
+            'URLS': {'URL-source': source_url,
+                     'URL-target': target_url}}
 
-        for endpoint in ['claim', 'result', 'status', 'output', 'input']:
-            meta["URLS"]["URL-{}".format(endpoint)] = make_url(
+        for endpoint in ['claim', 'status', 'output']:
+            job["URLS"]["URL-{}".format(endpoint)] = make_url(
                 endpoint, job_id)
-        return meta
-
-    def _make_job_dict(self, job):
-            job_dict = {}
-            job_dict['Orbit'] = job.orbit
-            job_dict['Backend'] = self._translate_backend[job.backend]
-            # job_dict['FreqMode'] = ''
-            job_dict['CalVersion'] = job.calversion.to_eng_string()
-            job_dict['LogFile'] = {}
-            try:
-                job_dict['LogFile']['FileDate'] = (
-                    job.logfile[0].filedate.isoformat())
-            except:
-                pass
-            job_dict['HDFFile'] = {}
-            try:
-                job_dict['HDFFile']['FileDate'] = (
-                    job.hdffile[0].filedate.isoformat())
-            except:
-                pass
-            URLS = {}
-            # URLS["URL-spectra"] = (
-            #     '{0}rest_api/v4/scan/{1}/{2}/{3}/').format(
-            #     request.url_root,
-            #     job_dict["Backend"],
-            #     job_dict["FreqMode"],
-            #     job_dict["orbit"])
-            # URLS['URL-ptz'] = (
-            #     '{0}rest_api/v1/ptz/{1}/{2}/{3}/{4}').format(
-            #     request.url_root,
-            #     date,
-            #     job_dict["Backend"],
-            #     job_dict["FreqMode"],
-            #     scanid)
-            job_dict["URLS"] = URLS
-
-            return job_dict
-
-    def _fake_job_dict(self):
-            job_dict = {}
-            job_dict['ScanID'] = 7607881909
-            job_dict['Backend'] = "AC1"
-            job_dict['FreqMode'] = 2
-
-            URLS = {}
-            URLS["URL-spectra"] = "http://malachite.rss.chalmers.se/" + \
-                "rest_api/v4/scan/AC1/2/7607881909/"
-            URLS["URL-ptz"] = "http://malachite.rss.chalmers.se/" + \
-                "rest_api/v4/ptz/2016-03-16/AC1/2/7607881909/"
-            URLS["URL-claim"] = "{0}rest_api/v4/jobs/{1}/claim".format(
-                request.url_root, job_dict['ScanID'])
-            URLS["URL-deliver"] = "{0}rest_api/v4/jobs/{1}/data".format(
-                request.url_root, job_dict['ScanID'])
-            URLS["URL-status"] = "{0}rest_api/v4/jobs/{1}".format(
-                request.url_root, job_dict['ScanID'])
-            job_dict["URLS"] = URLS
-
-            return job_dict
+        return job
 
 
 class FetchNextJob(ListJobs):
@@ -278,8 +221,8 @@ class FetchNextJob(ListJobs):
         db = self._get_database(project)
         try:
             job = next(db.get_jobs(match={'claimed': False},
-                                   fields=['id', 'meta']))
+                                   fields=['id', 'source_url', 'target_url']))
         except StopIteration:
             return abort(404, 'No unclaimed jobs available')
-        job = self._make_job(project, job['id'], job['meta'])
+        job = self._make_job(project, job)
         return jsonify(Version=version, Job=job)

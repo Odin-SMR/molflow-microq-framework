@@ -3,8 +3,7 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from uservice.core.users import get_user_db, auth
 from uservice.views.basic_views import (
     ListProjects, ListJobs, FetchNextJob, BasicView)
-from uservice.views.job_views import (
-    JobClaim, JobStatus, JobInput, JobResult, JobOutput)
+from uservice.views.job_views import JobClaim, JobStatus, JobOutput
 from uservice.views.project_views import ProjectStatus
 from uservice.views.site_views import (JobStatusHumanReadable,
                                        ListJobsHumanReadable,
@@ -92,20 +91,6 @@ class JobServer(Flask):
             '/rest_api/<version>/<project>/jobs/<job_id>/claim',
             view_func=JobClaim.as_view('jobclaim'),
             methods=["GET", "PUT", "DELETE"]
-            )
-        self.add_url_rule(
-            # GET job input data to process (also from fetch).
-            '/rest_api/<version>/<project>/jobs/<job_id>/input',
-            view_func=JobInput.as_view('jobdata'),
-            methods=["GET"]
-            )
-        self.add_url_rule(
-            # GET job result data, PUT to deliver result when done.
-            # TODO: Delete to remove results and make it available for
-            #       processing again?
-            '/rest_api/<version>/<project>/jobs/<job_id>/result',
-            view_func=JobResult.as_view('jobresult'),
-            methods=["GET", "PUT"]
             )
         self.add_url_rule(
             # GET and PUT job stdout/stderr output

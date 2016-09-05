@@ -81,10 +81,6 @@ class UClient(object):
         return self._call_api(url, 'PUT', json={"Worker": worker_name},
                               auth=self.auth)
 
-    def get_data(self, url):
-        """Get data to work with"""
-        return self._call_api(url)
-
     def update_output(self, url, output, token=None):
         """Update output of job."""
         return self._call_api(url, 'PUT', json={'Output': output},
@@ -94,12 +90,6 @@ class UClient(object):
     def update_status(self, url, status, token=None):
         """Update status of job."""
         return self._call_api(url, 'PUT', json={'Status': status},
-                              headers={'Content-Type': "application/json"},
-                              auth=self.auth)
-
-    def deliver_job(self, url, result, token=None):
-        """Deliver finished job."""
-        return self._call_api(url, 'PUT', json=result,
                               headers={'Content-Type': "application/json"},
                               auth=self.auth)
 
@@ -149,10 +139,12 @@ class Job(object):
 
     @property
     def url_claim(self):
+        """Claim job by calling this url"""
         return self.data["Job"]["URLS"]["URL-claim"]
 
     @property
     def url_status(self):
+        """Send status of job to this url"""
         return self.data["Job"]["URLS"]["URL-status"]
 
     @property
@@ -161,12 +153,14 @@ class Job(object):
         return self.data["Job"]["URLS"]["URL-output"]
 
     @property
-    def url_input_data(self):
-        return self.data["Job"]["URLS"]["URL-input"]
+    def url_source(self):
+        """External url to get input data to job"""
+        return self.data["Job"]["URLS"]["URL-source"]
 
     @property
-    def url_deliver(self):
-        return self.data["Job"]["URLS"]["URL-result"]
+    def url_target(self):
+        """External url to send results from job"""
+        return self.data["Job"]["URLS"]["URL-target"]
 
     def claim(self, worker='anonymous'):
         if self.claimed:
