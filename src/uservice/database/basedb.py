@@ -1,6 +1,9 @@
 from collections import OrderedDict
+from datetime import datetime
 
 from flask import g
+
+from utils.defs import JOB_STATES
 
 
 def get_db(project, cls, **dbsettings):
@@ -123,6 +126,9 @@ class InMemoryDatabase(BaseDatabaseAPI):
     def _insert_job(self, job_id, job_data):
         if self.job_exists(job_id):
             raise DBError('Job already exists')
+        job_data['claimed'] = False
+        job_data['current_status'] = JOB_STATES.available
+        job_data['added_timestamp'] = datetime.utcnow()
 
         self.db[job_id] = job_data
         return job_id

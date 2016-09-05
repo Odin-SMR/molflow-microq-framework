@@ -1,5 +1,4 @@
 import requests
-from uservice.datamodel import jsonmodels
 from test.testbase import BaseTest, BaseInsertedJobs
 
 
@@ -53,19 +52,11 @@ class TestBasicViews(BaseInsertedJobs):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.json()["Jobs"]), 1)
 
-    def test_get_job_from_list_jobs(self):
-        """Test getting a job from the list of jobs."""
-        r0 = requests.get(self._apiroot + "/v4/project/jobs")
-        # TODO: Do not fetch from malachite
-        r1 = requests.get(r0.json()["Jobs"][0]["URLS"]["URL-log"])
-        self.assertEqual(r1.status_code, 200)
-        self.assertEqual(r1.json()["Info"]["ScanID"], 7002887494)
-
     def test_fetch_job(self):
         """Test requesting a free job."""
         r = requests.get(self._apiroot + "/v4/project/jobs/fetch")
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json()["Job"]["ScanID"], 7002887494)
+        self.assertEqual(r.json()["Job"]["JobID"], '42')
 
 
 class TestJobViews(BaseTest):
@@ -116,14 +107,6 @@ class TestJobViews(BaseTest):
                          auth=("worker1", "sqrrl"))
         self.assertEqual(r.status_code, 200)
 
-    def test_get_data(self):
-        """Test getting data to process."""
-        job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
-        r = requests.get(job.json()["Job"]["URLS"]["URL-input"])
-        data = r.json()
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(data), 35)
-
     def test_update_job_output(self):
         """Test updating job output"""
         job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
@@ -134,24 +117,6 @@ class TestJobViews(BaseTest):
         self.assertEqual(r.status_code, 400)
         r = requests.put(job.json()["Job"]["URLS"]["URL-output"],
                          json={"Output": "Testing output update."},
-                         headers={'Content-Type': "application/json"},
-                         auth=("worker1", "sqrrl"))
-        self.assertEqual(r.status_code, 200)
-
-    def test_deliver_job_bad(self):
-        """Test delivering bad job."""
-        job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
-        r = requests.put(job.json()["Job"]["URLS"]["URL-result"],
-                         json={"Message": "This is invalid data."},
-                         headers={'Content-Type': "application/json"},
-                         auth=("worker1", "sqrrl"))
-        self.assertEqual(r.status_code, 400)
-
-    def test_deliver_job_good(self):
-        """Test delivering good job."""
-        job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
-        r = requests.put(job.json()["Job"]["URLS"]["URL-result"],
-                         json=jsonmodels.l2i_prototype,
                          headers={'Content-Type': "application/json"},
                          auth=("worker1", "sqrrl"))
         self.assertEqual(r.status_code, 200)

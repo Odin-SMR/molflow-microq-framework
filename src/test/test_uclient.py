@@ -28,15 +28,21 @@ class TestErrors(BaseTestUClient):
         """Test api exception"""
         api = self.get_client()
         with self.assertRaises(UClientError):
-            api.get_data('bad url')
+            api.update_output('bad url', 'out')
 
 
-class TestCredentials(BaseTestUClient):
+class BaseTestWithInsertedJob(BaseTestUClient):
 
     def setUp(self):
-        super(TestCredentials, self).setUp()
-        self._insert_job({'id': '42', 'type': 'test_type',
-                          'meta': {'data': None}})
+        super(BaseTestWithInsertedJob, self).setUp()
+        self._delete_test_project()
+        self._insert_test_jobs()
+
+    def tearDown(self):
+        self._delete_test_project()
+
+
+class TestCredentials(BaseTestWithInsertedJob):
 
     def test_credentials_from_file(self):
         """Test load of credentials from file"""
@@ -69,34 +75,16 @@ class TestCredentials(BaseTestUClient):
             job.claim()
 
 
-class TestJob(BaseTestUClient):
-
-    def setUp(self):
-        super(TestJob, self).setUp()
-        self._mock_results = {"L2i": {
-            "BLineOffset": [range(12)] * 4,
-            "ChannelId": [range(639)] * 1,
-            "FitsSpectrum": [range(639)] * 1,
-            "FreqMode": 0,
-            "FreqOffset": 0.0,
-            "InvMode": "",
-            "LOFreq": [range(12)] * 1,
-            "MinLmFactor": 0,
-            "PointOffset": 0.0,
-            "Residual": 0.0,
-            "STW": [range(1)] * 12,
-            "ScanId": 0,
-        }}
-        self._insert_test_jobs()
+class TestJob(BaseTestWithInsertedJob):
 
     def test_job(self):
-        """Test fetch, claim and deliver job"""
+        """Test fetch, claim and update status/output"""
         api = self.get_client()
 
         r = api.get_job_list()
         self.assertEqual(r.status_code, 200)
 
-        job = Job.fetch('odin_redo', api)
+        job = Job.fetch('test_type', api)
         self.assertFalse(job.claimed)
         job.claim()
         self.assertTrue(job.claimed)
@@ -105,18 +93,10 @@ class TestJob(BaseTestUClient):
 
         job.send_status('Claimed job')
 
-        r = api.get_data(job.url_input_data)
-        data = r.json()
-        self.assertEqual(len(data), 35)
+        self.assertEqual(job.url_source, self.TEST_URL)
+        self.assertEqual(job.url_target, self.TEST_URL)
 
         job.send_status("Got data")
 
-        result = self._mock_results
-
         api.update_output(job.url_output, "Processing...")
         job.send_status("Work done")
-
-        r = api.deliver_job(job.url_deliver, result)
-        self.assertEqual(r.status_code, 200)
-
-        job.send_status("Work delivered")

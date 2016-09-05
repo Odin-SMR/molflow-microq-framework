@@ -1,5 +1,4 @@
 import os
-import json
 import unittest
 import requests
 
@@ -7,6 +6,8 @@ TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
 class BaseTest(unittest.TestCase):
+
+    TEST_URL = 'http://example.com'
 
     _apiroot = "http://localhost:5000/rest_api"
     _project = 'project'
@@ -37,26 +38,13 @@ class BaseTest(unittest.TestCase):
     def _auth(self):
         return (self._username, self._password)
 
-    @staticmethod
-    def _get_test_jobs():
-        jobs = []
-        with open(os.path.join(TEST_DATA_DIR, 'job_list.json')) as inp:
-            job_list = json.load(inp)
-            for job in job_list['Info']:
-                jobs.append({
-                    'id': str(job['ScanID']),
-                    'meta': job,
-                    'input_data': None,
-                    'type': 'odin_redo',
-                })
-        assert jobs[0]['id'] == '7002887494', jobs[0]
-        with open(os.path.join(TEST_DATA_DIR, 'input_7002887494.json')) as inp:
-            jobs[0]['input_data'] = json.load(inp)
-        return jobs
-
     @classmethod
     def _insert_test_jobs(cls):
-        jobs = cls._get_test_jobs()
+        jobs = [
+            {'id': '42', 'type': 'test_type',
+             'source_url': cls.TEST_URL,
+             'target_url': cls.TEST_URL}
+        ]
         # TODO: Only inserting one job because authentication takes ~0.5 secs
         for job in jobs[:1]:
             status_code = cls._insert_job(job)
