@@ -8,14 +8,14 @@ import requests
 from werkzeug.serving import BaseWSGIServer, WSGIRequestHandler
 from werkzeug.wrappers import Request, Response
 
-from test.testbase import BaseTest, TEST_DATA_DIR
+from test.testbase import BaseWithWorkerUser, TEST_DATA_DIR
 
 from utils.defs import JOB_STATES
 from utils.docker_util import in_docker
 from uworker import uworker
 
 
-class TestUWorker(BaseTest):
+class TestUWorker(BaseWithWorkerUser):
 
     def setUp(self):
         self.env = {
@@ -87,7 +87,7 @@ class TestUWorker(BaseTest):
 
 @unittest.skipIf(not in_docker(),
                  'Must be run in a container with a running uworker')
-class TestQsmrJob(BaseTest):
+class TestQsmrJob(BaseWithWorkerUser):
     JOB_ID = '42'
     _apiroot = 'http://webapi:5000/rest_api'
     _project = 'testproject'

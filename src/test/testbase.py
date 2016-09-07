@@ -10,19 +10,11 @@ class BaseTest(unittest.TestCase):
     TEST_URL = 'http://example.com'
 
     _apiroot = "http://localhost:5000/rest_api"
+    _adminuser = 'admin'
+    _adminpw = 'sqrrl'
     _project = 'project'
     _username = 'worker1'
     _password = 'sqrrl'
-
-    @classmethod
-    def setUpClass(cls):
-        # TODO: Use mysql and add first user directly to db instead.
-        #       Create user endpoint should need auth.
-        r = requests.post(cls._apiroot + "/admin/users",
-                          headers={'Content-Type': "application/json"},
-                          json={"username": cls._username,
-                                "password": cls._password})
-        assert r.status_code == 400, r.status_code
 
     @classmethod
     def tearDownClass(cls):
@@ -57,8 +49,36 @@ class BaseTest(unittest.TestCase):
             json=job, auth=(cls._username, cls._password))
         return r.status_code
 
+    @classmethod
+    def _insert_worker_user(cls):
+        r = requests.post(cls._apiroot + "/admin/users",
+                          headers={'Content-Type': "application/json"},
+                          json={"username": cls._username,
+                                "password": cls._password},
+                          auth=(cls._adminuser, cls._adminpw))
+        assert r.status_code == 201, r.status_code
+        return r.json()['userid']
 
-class BaseInsertedJobs(BaseTest):
+    @classmethod
+    def _delete_user(cls, userid):
+        requests.delete(cls._apiroot + "/admin/users/{}".format(userid),
+                        auth=(cls._adminuser, cls._adminpw))
+
+
+class BaseWithWorkerUser(BaseTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(BaseWithWorkerUser, cls).setUpClass()
+        cls.worker_userid = cls._insert_worker_user()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BaseWithWorkerUser, cls).tearDownClass()
+        cls._delete_user(cls.worker_userid)
+
+
+class BaseInsertedJobs(BaseWithWorkerUser):
 
     @classmethod
     def setUpClass(cls):
