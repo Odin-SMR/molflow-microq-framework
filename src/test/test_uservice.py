@@ -1,29 +1,58 @@
 import requests
-from test.testbase import BaseTest, BaseInsertedJobs
+from test.testbase import BaseTest, BaseWithWorkerUser, BaseInsertedJobs
 
 
 class TestAdmin(BaseTest):
 
+    def test_adding_user(self):
+        """Test adding and deleting a user"""
+        # Try to add with empty username
+        r = requests.post(self._apiroot + "/admin/users",
+                          auth=("admin", "sqrrl"),
+                          headers={'Content-Type': "application/json"},
+                          json={"username": "", "password": "sqrrl"})
+        self.assertEqual(r.status_code, 400)
+
+        # Try to add a valid user
+        r = requests.post(self._apiroot + "/admin/users",
+                          auth=(self._adminuser, self._adminpw),
+                          headers={'Content-Type': "application/json"},
+                          json={"username": "myworker", "password": "sqrrl"})
+        self.assertEqual(r.status_code, 201)
+        userid = r.json()['userid']
+
+        # Try to add same user again
+        r = requests.post(self._apiroot + "/admin/users",
+                          auth=(self._adminuser, self._adminpw),
+                          headers={'Content-Type': "application/json"},
+                          json={"username": "myworker", "password": "sqrrl"})
+        self.assertEqual(r.status_code, 400)
+
+        # Try to add new user with none admin user
+        r = requests.post(self._apiroot + "/admin/users",
+                          auth=("myworker", "sqrrl"),
+                          headers={'Content-Type': "application/json"},
+                          json={"username": "other", "password": "sqrrl"})
+        self.assertEqual(r.status_code, 403)
+
+        r = requests.delete(self._apiroot + "/admin/users/{}".format(userid),
+                            auth=(self._adminuser, self._adminpw))
+        self.assertEqual(r.status_code, 204)
+
+
+class TestAuthentication(BaseWithWorkerUser):
+
     @classmethod
     def setUpClass(cls):
-        super(TestAdmin, cls).setUpClass()
+        super(TestAuthentication, cls).setUpClass()
         cls._insert_job({'id': '42', 'type': 'test_type'})
-
-    def test_adding_user(self):
-        """Test adding a new user"""
-        r = requests.post(self._apiroot + "/admin/users",
-                          auth=("skymandr", "42"),
-                          headers={'Content-Type': "application/json"},
-                          json={"username": "worker1", "password": "sqrrl"})
-        # TODO: Empty user database in setUp/tearDown
-        self.assertEqual(r.status_code, 400)
 
     def test_user_password_authentication(self):
         """Test authenticating by user and password"""
         r = requests.put(self._apiroot + "/v4/project/jobs/42/status",
                          json={"Status": "42"},
                          headers={'Content-Type': "application/json"},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 200)
 
         r = requests.put(self._apiroot + "/v4/project/jobs/42/status",
@@ -34,7 +63,7 @@ class TestAdmin(BaseTest):
 
     def test_token_authentication(self):
         """Test authenticating by token"""
-        r0 = requests.get(self._apiroot + "/token", auth=("worker1", "sqrrl"))
+        r0 = requests.get(self._apiroot + "/token", auth=self._auth)
         token = r0.json()["token"]
         r1 = requests.put(self._apiroot + "/v4/project/jobs/42/status",
                           json={"Status": "42"},
@@ -59,7 +88,7 @@ class TestBasicViews(BaseInsertedJobs):
         self.assertEqual(r.json()["Job"]["JobID"], '42')
 
 
-class TestJobViews(BaseTest):
+class TestJobViews(BaseWithWorkerUser):
 
     def setUp(self):
         self._delete_test_project()
@@ -74,12 +103,12 @@ class TestJobViews(BaseTest):
         r = requests.put(job.json()["Job"]["URLS"]["URL-status"],
                          json={"BadStatus": "Testing status update."},
                          headers={'Content-Type': "application/json"},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 400)
         r = requests.put(job.json()["Job"]["URLS"]["URL-status"],
                          json={"Status": "Testing status update."},
                          headers={'Content-Type': "application/json"},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 200)
 
     def test_claim_job(self):
@@ -87,24 +116,24 @@ class TestJobViews(BaseTest):
         job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
         r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
                          json={'BadWorker': self._username},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 400)
 
         r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 200)
         # Should not be able to claim same job again
         r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 409)
         # Should be able to claim after release of job
         r = requests.delete(job.json()["Job"]["URLS"]["URL-claim"],
-                            auth=("worker1", "sqrrl"))
+                            auth=self._auth)
         r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 200)
 
     def test_update_job_output(self):
@@ -113,10 +142,10 @@ class TestJobViews(BaseTest):
         r = requests.put(job.json()["Job"]["URLS"]["URL-output"],
                          json={"BadOutput": "Testing output update."},
                          headers={'Content-Type': "application/json"},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 400)
         r = requests.put(job.json()["Job"]["URLS"]["URL-output"],
                          json={"Output": "Testing output update."},
                          headers={'Content-Type': "application/json"},
-                         auth=("worker1", "sqrrl"))
+                         auth=self._auth)
         self.assertEqual(r.status_code, 200)

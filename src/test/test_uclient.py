@@ -1,9 +1,9 @@
 import json
 from uclient.uclient import UClient, UClientError, Job
-from test.testbase import BaseTest
+from test.testbase import BaseWithWorkerUser
 
 
-class BaseTestUClient(BaseTest):
+class BaseTestUClient(BaseWithWorkerUser):
     def setUp(self):
         super(BaseTestUClient, self).setUp()
         self._credentials = {"username": "worker1",

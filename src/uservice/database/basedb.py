@@ -18,7 +18,7 @@ class DBError(Exception):
     pass
 
 
-class BaseDatabaseAPI(object):
+class BaseJobDatabaseAPI(object):
     """Base API to a database.
 
     Inherit and implement:
@@ -70,7 +70,7 @@ class BaseDatabaseAPI(object):
         """
         raise NotImplementedError
 
-    def _insert_job(self, job):
+    def _insert_job(self, job_id, job):
         raise NotImplementedError
 
     def _verify(self, data):
@@ -84,16 +84,16 @@ class BaseDatabaseAPI(object):
         raise NotImplementedError
 
 
-class InMemoryDatabase(BaseDatabaseAPI):
+class InMemoryJobDatabase(BaseJobDatabaseAPI):
     """Simple dict based database for testing"""
 
     DATABASES = {}
 
     def __init__(self, project):
-        super(InMemoryDatabase, self).__init__(project)
-        if project not in InMemoryDatabase.DATABASES:
-            InMemoryDatabase.DATABASES[project] = OrderedDict()
-        self.db = InMemoryDatabase.DATABASES[project]
+        super(InMemoryJobDatabase, self).__init__(project)
+        if project not in InMemoryJobDatabase.DATABASES:
+            InMemoryJobDatabase.DATABASES[project] = OrderedDict()
+        self.db = InMemoryJobDatabase.DATABASES[project]
 
     def close(self):
         pass
@@ -137,5 +137,5 @@ class InMemoryDatabase(BaseDatabaseAPI):
         return job_id in self.db
 
     def drop(self):
-        InMemoryDatabase.DATABASES[self.project] = OrderedDict()
-        self.db = InMemoryDatabase.DATABASES[self.project]
+        InMemoryJobDatabase.DATABASES[self.project] = OrderedDict()
+        self.db = InMemoryJobDatabase.DATABASES[self.project]

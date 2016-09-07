@@ -1,16 +1,16 @@
 """ Basic views for REST api
 """
+from os import environ
+
 from flask import jsonify, abort as flask_abort, make_response, request
 from flask.views import MethodView
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from utils.validate import validate_project_name
 from utils.logs import get_logger
 
 from uservice.core.users import auth
-# from uservice.datamodel.model import Level1
-from uservice.database.basedb import get_db, InMemoryDatabase
+from uservice.database.basedb import get_db
+from uservice.database.sqldb import SqlJobDatabase
 
 
 def abort(status_code, message=None):
@@ -91,8 +91,8 @@ class BasicProjectView(BasicView):
     """Base class for project views"""
 
     def _get_database(self, project):
-        # TODO: Choose database based on config
-        return get_db(project, InMemoryDatabase)
+        return get_db(
+            project, SqlJobDatabase, dburl=environ['USERVICE_DATABASE_URI'])
 
     def get(self, version, project):
         """GET"""
@@ -138,13 +138,6 @@ class ListProjects(BasicView):
 class ListJobs(BasicProjectView):
     """View for listing jobs as JSON object"""
     _translate_backend = {'B': 'AC1', 'C': 'AC2', 'AC1': 'AC1', 'AC2': 'AC2'}
-
-    def __init__(self):
-        super(ListJobs, self).__init__()
-        self._engine = create_engine(
-            'mysql+pymysql://odinuser:***REMOVED***@mysqlhost/smr')
-        make_session = sessionmaker(bind=self._engine)
-        self._session = make_session()
 
     # TODO: Use url parameter 'type'
     def _get_view(self, version, project):

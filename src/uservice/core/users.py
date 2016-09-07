@@ -10,7 +10,7 @@ def get_user_db(user_db, app):
         __tablename__ = 'users'
         id = user_db.Column(user_db.Integer, primary_key=True)
         username = user_db.Column(user_db.String(32), index=True)
-        password_hash = user_db.Column(user_db.String(64))
+        password_hash = user_db.Column(user_db.String(128))
 
         def hash_password(self, password):
             self.password_hash = pwd_context.encrypt(password)
