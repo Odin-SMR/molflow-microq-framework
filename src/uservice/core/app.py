@@ -1,7 +1,7 @@
 from os import environ
 
 from flask import Flask, g, request, abort, jsonify, url_for, make_response
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 
 from uservice.core.users import get_user_db, auth
 from uservice.views.basic_views import (
@@ -113,7 +113,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # extensions
 user_db = SQLAlchemy(app)
 User = get_user_db(user_db, app)
-user_db.create_all()
+DB_INITIALIZED = False
 
 
 def _add_user(username, password):
@@ -130,7 +130,20 @@ def _add_user(username, password):
     user_db.session.commit()
     return user.id, None
 
-_add_user(environ['USERVICE_ADMIN_USER'], environ['USERVICE_ADMIN_PASSWORD'])
+
+def _init_db():
+    global DB_INITIALIZED
+    if DB_INITIALIZED:
+        return
+    try:
+        user_db.create_all()
+        _add_user(environ['USERVICE_ADMIN_USER'],
+                  environ['USERVICE_ADMIN_PASSWORD'])
+        DB_INITIALIZED = True
+    except:
+        abort(503)
+
+app.before_request(_init_db)
 
 
 @app.teardown_appcontext
@@ -187,7 +200,7 @@ def not_implemented(error):
 
 @app.errorhandler(503)
 def service_unavailable(error):
-    return service_unavailable(jsonify({'error': 'Service unavailable'}), 503)
+    return make_response(jsonify({'error': 'Service unavailable'}), 503)
 
 
 # user admininstration and authentication
