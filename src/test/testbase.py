@@ -15,6 +15,7 @@ class BaseTest(unittest.TestCase):
     _project = 'project'
     _username = 'worker1'
     _password = 'sqrrl'
+    _token = None
 
     @classmethod
     def tearDownClass(cls):
@@ -24,10 +25,12 @@ class BaseTest(unittest.TestCase):
     def _delete_test_project(cls):
         requests.delete(
             cls._apiroot + '/v4/{}'.format(cls._project),
-            auth=(cls._username, cls._password))
+            auth=(cls._token or cls._username, cls._password))
 
     @property
     def _auth(self):
+        if self._token:
+            return (self._token, '')
         return (self._username, self._password)
 
     @classmethod
@@ -46,7 +49,7 @@ class BaseTest(unittest.TestCase):
     def _insert_job(cls, job):
         r = requests.post(
             cls._apiroot + '/v4/{}/jobs'.format(cls._project),
-            json=job, auth=(cls._username, cls._password))
+            json=job, auth=(cls._token or cls._username, cls._password))
         return r.status_code
 
     @classmethod
@@ -60,6 +63,13 @@ class BaseTest(unittest.TestCase):
         return r.json()['userid']
 
     @classmethod
+    def _get_worker_token(cls):
+        r = requests.get(cls._apiroot + "/token",
+                         auth=(cls._username, cls._password))
+        assert r.status_code == 200, r.status_code
+        return r.json()['token']
+
+    @classmethod
     def _delete_user(cls, userid):
         requests.delete(cls._apiroot + "/admin/users/{}".format(userid),
                         auth=(cls._adminuser, cls._adminpw))
@@ -71,11 +81,13 @@ class BaseWithWorkerUser(BaseTest):
     def setUpClass(cls):
         super(BaseWithWorkerUser, cls).setUpClass()
         cls.worker_userid = cls._insert_worker_user()
+        cls._token = cls._get_worker_token()
 
     @classmethod
     def tearDownClass(cls):
         super(BaseWithWorkerUser, cls).tearDownClass()
         cls._delete_user(cls.worker_userid)
+        cls._token = None
 
 
 class BaseInsertedJobs(BaseWithWorkerUser):

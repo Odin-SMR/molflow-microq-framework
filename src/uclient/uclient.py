@@ -29,14 +29,18 @@ class UClient(object):
         self.verbose = verbose
         self.credentials = self._get_credentials(
             username, password, credentials_file)
+        self.token = None
 
-    def renew_token():
+    def renew_token(self):
         """
         Renew token for token based authorization.
 
         Might not be necessary.
         """
-        pass
+        url = self.uri + "/token"
+        auth = (self.credentials['username'], self.credentials['password'])
+        r = self._call_api(url, renew_token=False, auth=auth)
+        self.token = r.json()['token']
 
     def _load_credentials(self, filename="credentials.json"):
         """
@@ -66,34 +70,34 @@ class UClient(object):
 
     def get_job_list(self):
         """Request list of jobs from server."""
-        return self._call_api(self.project_uri + "/jobs")
+        return self._call_api(self.project_uri + "/jobs", auth=self.auth)
 
     def fetch_job(self, job_type=None):
         """Request an unprocessed job from server."""
         url = self.project_uri + "/jobs/fetch"
         if job_type:
             url += '?{}'.format(urllib.urlencode({'type': job_type}))
-        return self._call_api(url)
+        return self._call_api(url, auth=self.auth)
 
-    def claim_job(self, url, worker_name, token=None):
+    def claim_job(self, url, worker_name):
         """Claim job from server"""
         # TODO: Worker node info
         return self._call_api(url, 'PUT', json={"Worker": worker_name},
                               auth=self.auth)
 
-    def update_output(self, url, output, token=None):
+    def update_output(self, url, output):
         """Update output of job."""
         return self._call_api(url, 'PUT', json={'Output': output},
                               headers={'Content-Type': "application/json"},
                               auth=self.auth)
 
-    def update_status(self, url, status, token=None):
+    def update_status(self, url, status):
         """Update status of job."""
         return self._call_api(url, 'PUT', json={'Status': status},
                               headers={'Content-Type': "application/json"},
                               auth=self.auth)
 
-    def _call_api(self, url, method='GET', **kwargs):
+    def _call_api(self, url, method='GET', renew_token=True, **kwargs):
         """Call micro service.
 
         Returns:
@@ -109,6 +113,10 @@ class UClient(object):
             raise UClientError('API call to %r failed: %s' % (url, e))
         if self.verbose:
             print(r.text)
+        if renew_token and r.status_code == 401:
+            self.renew_token()
+            return self._call_api(
+                url, method=method, renew_token=False, **kwargs)
         if r.status_code > 299:
             raise UClientError(r.reason, r.status_code)
         return r
@@ -117,7 +125,9 @@ class UClient(object):
     def auth(self):
         if not self.credentials:
             raise UClientError('No credentials provided')
-        return (self.credentials['username'], self.credentials['password'])
+        if not self.token:
+            self.renew_token()
+        return (self.token, '')
 
 
 class Job(object):

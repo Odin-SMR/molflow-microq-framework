@@ -8,7 +8,7 @@ class TestAdmin(BaseTest):
         """Test adding and deleting a user"""
         # Try to add with empty username
         r = requests.post(self._apiroot + "/admin/users",
-                          auth=("admin", "sqrrl"),
+                          auth=(self._adminuser, self._adminpw),
                           headers={'Content-Type': "application/json"},
                           json={"username": "", "password": "sqrrl"})
         self.assertEqual(r.status_code, 400)
@@ -52,7 +52,7 @@ class TestAuthentication(BaseWithWorkerUser):
         r = requests.put(self._apiroot + "/v4/project/jobs/42/status",
                          json={"Status": "42"},
                          headers={'Content-Type': "application/json"},
-                         auth=self._auth)
+                         auth=(self._username, self._password))
         self.assertEqual(r.status_code, 200)
 
         r = requests.put(self._apiroot + "/v4/project/jobs/42/status",
@@ -63,7 +63,8 @@ class TestAuthentication(BaseWithWorkerUser):
 
     def test_token_authentication(self):
         """Test authenticating by token"""
-        r0 = requests.get(self._apiroot + "/token", auth=self._auth)
+        r0 = requests.get(self._apiroot + "/token",
+                          auth=(self._username, self._password))
         token = r0.json()["token"]
         r1 = requests.put(self._apiroot + "/v4/project/jobs/42/status",
                           json={"Status": "42"},
@@ -77,13 +78,15 @@ class TestBasicViews(BaseInsertedJobs):
 
     def test_list_jobs(self):
         """Test requesting list of jobs."""
-        r = requests.get(self._apiroot + "/v4/project/jobs")
+        r = requests.get(self._apiroot + "/v4/project/jobs",
+                         auth=self._auth)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.json()["Jobs"]), 1)
 
     def test_fetch_job(self):
         """Test requesting a free job."""
-        r = requests.get(self._apiroot + "/v4/project/jobs/fetch")
+        r = requests.get(self._apiroot + "/v4/project/jobs/fetch",
+                         auth=self._auth)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["Job"]["JobID"], '42')
 
@@ -99,7 +102,8 @@ class TestJobViews(BaseWithWorkerUser):
 
     def test_update_job_status(self):
         """Test updating job status."""
-        job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
+        job = requests.get(self._apiroot + "/v4/project/jobs/fetch",
+                           auth=self._auth)
         r = requests.put(job.json()["Job"]["URLS"]["URL-status"],
                          json={"BadStatus": "Testing status update."},
                          headers={'Content-Type': "application/json"},
@@ -113,7 +117,8 @@ class TestJobViews(BaseWithWorkerUser):
 
     def test_claim_job(self):
         """Test claiming a job."""
-        job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
+        job = requests.get(self._apiroot + "/v4/project/jobs/fetch",
+                           auth=self._auth)
         r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
                          json={'BadWorker': self._username},
                          auth=self._auth)
@@ -138,7 +143,8 @@ class TestJobViews(BaseWithWorkerUser):
 
     def test_update_job_output(self):
         """Test updating job output"""
-        job = requests.get(self._apiroot + "/v4/project/jobs/fetch")
+        job = requests.get(self._apiroot + "/v4/project/jobs/fetch",
+                           auth=self._auth)
         r = requests.put(job.json()["Job"]["URLS"]["URL-output"],
                          json={"BadOutput": "Testing output update."},
                          headers={'Content-Type': "application/json"},

@@ -17,6 +17,7 @@ STATE_TO_TIMESTAMP = {
 
 class BasicJobView(BasicProjectView):
     """Base class for views that require job id"""
+    @auth.login_required
     def get(self, version, project, job_id):
         """GET"""
         self._check_version(version)
