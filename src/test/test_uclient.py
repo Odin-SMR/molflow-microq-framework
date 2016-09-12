@@ -6,8 +6,8 @@ from test.testbase import BaseWithWorkerUser
 class BaseTestUClient(BaseWithWorkerUser):
     def setUp(self):
         super(BaseTestUClient, self).setUp()
-        self._credentials = {"username": "worker1",
-                             "password": "sqrrl"}
+        self._credentials = {"username": self._token,
+                             "password": ''}
 
     def get_client(self, credentials=None, project=None):
         credentials = (credentials if credentials is not None
@@ -58,21 +58,19 @@ class TestCredentials(BaseTestWithInsertedJob):
         # The guy below should use different uris:
         credentials = {"username": "snoopy", "password": "ace"}
         api = self.get_client(credentials)
-        job = Job.fetch('test_type', api)
         with self.assertRaises(UClientError):
-            job.claim()
+            Job.fetch('test_type', api)
 
         try:
-            job.send_status('evil')
+            Job.fetch('test_type', api)
             raise AssertionError('Should have excepted!')
         except UClientError as e:
             self.assertEqual(e.status_code, 401)
 
         # No credentials provided
         api = self.get_client({})
-        job = Job.fetch('test_type', api)
         with self.assertRaises(UClientError):
-            job.claim()
+            Job.fetch('test_type', api)
 
 
 class TestJob(BaseTestWithInsertedJob):

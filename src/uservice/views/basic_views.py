@@ -30,6 +30,7 @@ class BasicView(MethodView):
         self.log = get_logger('UService')
         super(BasicView, self).__init__()
 
+    @auth.login_required
     def get(self, version):
         """GET"""
         self._check_version(version)
@@ -94,6 +95,7 @@ class BasicProjectView(BasicView):
         return get_db(
             project, SqlJobDatabase, dburl=environ['USERVICE_DATABASE_URI'])
 
+    @auth.login_required
     def get(self, version, project):
         """GET"""
         self._check_version(version)

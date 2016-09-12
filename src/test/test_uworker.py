@@ -25,8 +25,8 @@ class TestUWorker(BaseWithWorkerUser):
             'UWORKER_JOB_TYPE': 'test',
             'UWORKER_JOB_API_ROOT': self._apiroot,
             'UWORKER_JOB_API_PROJECT': self._project,
-            'UWORKER_JOB_API_USERNAME': self._username,
-            'UWORKER_JOB_API_PASSWORD': self._password,
+            'UWORKER_JOB_API_USERNAME': self._token,
+            'UWORKER_JOB_API_PASSWORD': "",
             'UWORKER_EXTERNAL_API_USERNAME': 'test',
             'UWORKER_EXTERNAL_API_PASSWORD': 'test',
         }
@@ -74,7 +74,7 @@ class TestUWorker(BaseWithWorkerUser):
 
     def test_api_failure(self):
         """Test bad api url and password"""
-        os.environ['UWORKER_JOB_API_PASSWORD'] = 'wrong'
+        os.environ['UWORKER_JOB_API_USERNAME'] = 'wrong'
         self._run_once(expected_jobs_count=0)
 
         os.environ['UWORKER_JOB_API_ROOT'] = 'wrong'
