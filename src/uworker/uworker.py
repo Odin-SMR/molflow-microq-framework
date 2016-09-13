@@ -84,7 +84,8 @@ class UWorker(object):
             class_name=self.__class__.__name__,
             host=config['hostname'],
             container=config['container_name'])
-        self.log = get_logger(self.name)
+        self.log = get_logger(self.name, to_file=start_service,
+                              to_stdout=not start_service)
         self.job_count = 0
         self.log_config(config)
         self.cmd = config['job_command'].split()
