@@ -44,7 +44,8 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
     def __init__(self, project, dburl=None):
         global engine, db_session
         if not engine:
-            engine = create_engine(dburl, convert_unicode=True)
+            engine = create_engine(
+                dburl, convert_unicode=True, pool_size=30, pool_recycle=3600)
             db_session = scoped_session(
                 sessionmaker(autocommit=True,
                              autoflush=True,
