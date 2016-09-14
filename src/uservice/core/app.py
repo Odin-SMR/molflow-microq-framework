@@ -108,6 +108,8 @@ app.config['SECRET_KEY'] = 'verklig nytta av min hermodskurs i mord'
 app.config['SQLALCHEMY_DATABASE_URI'] = environ['USERVICE_DATABASE_URI']
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_POOL_SIZE'] = 30
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 3600
 
 
 # extensions
