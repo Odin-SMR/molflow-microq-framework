@@ -29,12 +29,57 @@ for getting statuses and performing administration.
   processing a Job, or the process of delivering the result to the Server.
 
 
-## REST hierarchy
+## UClient - The client
+
+TODO
+
+
+## UWorker - The worker
+
+TODO
+
+
+## UService - The server
+
+### Authentication
+
+The server supports basic and token based authentication.
+
+Basic authentication example in python:
+
+    response = requests.get(url, auth=(username, password))
+
+Token based authentication example in python:
+
+    response = requests.get(url, auth=(token, ''))
+
+An admin user is added to the server at startup via these environment
+variables:
+
+- `USERVICE_ADMIN_USER`
+- `USERVICE_ADMIN_PASSWORD`
+
+The admin user can create and delete worker users via these endpoints:
+
+- `/rest/admin/users`: **POST** `{'username': <username>, 'password': <password>}`
+- `/rest/admin/users/<id>/get`: **GET** returns the username.
+- `/rest/admin/users/<id>/delete`: **DELETE** removes the user.
+
+The basic authentication with username and password is slow to prevent
+rainbow table attacks and to encourage use of token authentication.
+
+A user can get a token that will be valid for ten minutes via this endpoint:
+
+- `/rest/token`: **GET** returns a token.
+
+### REST hierarchy
 
 Below is a description of the proposed REST hierarchy.
 
+TODO: Needs update
 
-### /rest/jobs/
+
+#### /rest/jobs/
 
 URL for getting a human readable list of jobs with id and statuses:
 - available
@@ -42,7 +87,7 @@ URL for getting a human readable list of jobs with id and statuses:
 - done (message, e.g. delivery time, deliverer id etc.)
 
 
-### /rest/jobs/list/
+#### /rest/jobs/list/
 
 URL for getting a non-human readable list of jobs with id and statuses:
 - available
@@ -50,7 +95,7 @@ URL for getting a non-human readable list of jobs with id and statuses:
 - done (message, e.g. delivery time, deliverer id etc.)
 
 
-### /rest/jobs/fetch/
+#### /rest/jobs/fetch/
 
 URL for getting the next job in the "queue" from the server.  No authentication
 required.
@@ -58,18 +103,18 @@ required.
 Result is URL for claiming, getting data, reporting status etc.
 
 
-### /rest/jobs/<id>/
+#### /rest/jobs/<id>/
 
 URL for getting the status of job <id>, also returns URLs for getting data to
 process, claiming etc. as applicable. Human readable.
 
 
-### /rest/jobs/<id>/status/
+#### /rest/jobs/<id>/status/
 
 URL for getting status of job <id>, also returns URLs for getting data to
 process, claiming etc. as applicable. Not human readable.
 
-### /rest/jobs/<id>/status/update/
+#### /rest/jobs/<id>/status/update/
 
 URL for updating status of job <id>. Some sort of authentication might be
 implemeted, such as only allowing claims where a proper key is supplied via
@@ -81,11 +126,11 @@ Old status moved to log? New status can be supplied e.g. via ?status=.
 Result is some sort of status confirmation reporting success or failure.
 
 
-### /rest/jobs/<id>/data/
+#### /rest/jobs/<id>/data/
 URL for getting the data (or URLs to data) needed to start processing.
 
 
-### /rest/jobs/<id>/claim/
+#### /rest/jobs/<id>/claim/
 URL for claiming a job. Some sort of authentication might be implemeted, such
 as only allowing claims where a proper key is supplied via e.g. ?key=.
 
@@ -98,7 +143,7 @@ Result is some sort of status confirmation (and URL to data..?) if the job can
 be claimed, otherwise some negative confirmation/http status code.
 
 
-### /rest/jobs/<id>/lock/
+#### /rest/jobs/<id>/lock/
 URL for locking a job, e.g. when claimed. Some sort of authentication might be
 implemeted, such as only allowing locking where a proper key is supplied via
 e.g. ?key=.
@@ -108,7 +153,7 @@ An authentic call tells the server to update the status to Locked.
 Result is some sort of status confirmation reporting success or failure.
 
 
-### /rest/jobs/<id>/unlock/
+#### /rest/jobs/<id>/unlock/
 URL for unlocking a job, e.g. when the Worker that claimed it is suspected to
 have crashed. Some sort of authentication might be implemeted, such as only
 allowing claims where a proper key is supplied via e.g. ?key=.
@@ -118,7 +163,7 @@ An authentic should clear claimant id etc, but some info may be kept in a log.
 Result is some sort of status confirmation reporting success or failure.
 
 
-### /rest/jobs/<id>/deliver/
+#### /rest/jobs/<id>/deliver/
 URL for delivering a job, e.g. when claimed. Some sort of authentication might
 be implemeted, such as only allowing claims where a proper key is supplied via
 e.g. ?key=.
