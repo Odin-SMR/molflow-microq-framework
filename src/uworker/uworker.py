@@ -7,6 +7,7 @@ Worker that performs jobs provided by a uservice api.
 """
 
 import os
+import errno
 from sys import exit
 import signal
 import subprocess
@@ -253,6 +254,8 @@ class CommandExecutor(object):
 
         killed = exit_code in (124, 128+9)
 
+        self._reap_children(popen.pid)
+
         for what, stream in (('stdout', popen.stdout),
                              ('stderr', popen.stderr)):
             try:
@@ -263,6 +266,23 @@ class CommandExecutor(object):
                         what, e.__class__.__name__, e))
 
         return exit_code, killed
+
+    def _reap_children(self, pid):
+        """Docker does not reap orphaned children, see:
+        https://blog.phusion.nl/2015/01/20/docker-and-the-pid-1-zombie-reaping-problem/
+        """
+        try:
+            this_pid, status = os.waitpid(-1, 0)
+            self.log.info('Reaped child %s, exit code: %s' % (
+                this_pid, status))
+            while this_pid != pid:
+                this_pid, status = os.waitpid(-1, 0)
+                self.log.info('Reaped child %s, exit code: %s' % (
+                    this_pid, status))
+        except OSError as e:
+            if e.errno in (errno.ECHILD, errno.ESRCH):
+                return
+            raise
 
     @staticmethod
     def _write_output(what, msg, output):
