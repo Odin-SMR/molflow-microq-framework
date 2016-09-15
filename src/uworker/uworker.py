@@ -13,6 +13,9 @@ import subprocess
 import argparse
 from io import BytesIO
 from time import sleep, time
+from datetime import datetime
+from threading import Thread, Lock
+from numbers import Real
 
 from uclient.uclient import UClient, UClientError, Job
 from utils.logs import get_logger
@@ -28,6 +31,7 @@ def get_config():
         # Set by Dockerfile, should always exist.
         'job_command': os.environ['UWORKER_JOB_CMD'],
         'job_type': os.environ['UWORKER_JOB_TYPE'],
+        'job_timeout': os.environ.get('UWORKER_JOB_TIMEOUT'),
         # Default can be set by Dockerfile, can be overrided by user
         'api_root': os.environ['UWORKER_JOB_API_ROOT'],
         # Set by user
@@ -88,8 +92,12 @@ class UWorker(object):
                               to_stdout=not start_service)
         self.job_count = 0
         self.log_config(config)
-        self.cmd = config['job_command'].split()
+        self.cmd = config['job_command']
         self.job_type = config['job_type']
+        self.job_timeout = config['job_timeout']
+        if self.job_timeout:
+            self.job_timeout = int(self.job_timeout)
+        self.executor = CommandExecutor(self.cmd, self.log)
         self.api = UClient(config['api_root'], config['api_project'],
                            username=config['api_username'],
                            password=config['api_password'])
@@ -116,9 +124,9 @@ class UWorker(object):
                     sleep(self.IDLE_SLEEP)
                 elif self.claim_job(job):
                     job.send_status(JOB_STATES.started)
-                    success = self.do_job(
+                    exit_code = self.do_job(
                         job.url_source, job.url_target, job.url_output)
-                    if success:
+                    if exit_code == 0:
                         job.send_status(JOB_STATES.finished)
                     else:
                         job.send_status(JOB_STATES.failed)
@@ -143,57 +151,131 @@ class UWorker(object):
         return False
 
     def do_job(self, url_source, url_target=None, url_output=None):
-        cmd = self.cmd + [url_source]
+        args = [url_source]
         if url_target:
-            cmd.append(url_target)
-            cmd.extend(cred for cred in self.external_auth if cred)
-        self.log.info('Starting job: %s' % cmd)
-        popen = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 universal_newlines=True)
+            args.append(url_target)
+            args.extend(cred for cred in self.external_auth if cred)
+
+        def output_callback(output):
+            if url_output:
+                # TODO: Limit size of output that can be sent
+                self.api.update_output(url_output, output)
+
+        self.log.info('Starting job: %s' % args)
+        # TODO: Add support for letting a job override the configured timeout
+        exit_code = self.executor.execute(
+            args, output_callback, timeout=self.job_timeout)
+        return exit_code
+
+
+class ExecutorError(Exception):
+    pass
+
+
+class CommandExecutor(object):
+    def __init__(self, cmd, log):
+        self.cmd = cmd.split()
+        self.log = log
+        self.output_lock = Lock()
+
+    def execute(self, command_args, output_callback, timeout=None):
+        """
+        Execute the command with args and monitor the progress.
+
+        Args:
+          commandd_args (list): List of arguments to provide to the command.
+          output_callback (function): Call this function with output from
+            the command as argument.
+          timeout (int): Send TERM to the command if it has not finished
+            after this many seconds. Also send KILL (9) if it still is
+            alive 5 seconds after TERM was sent.
+        """
+        cmd = self.cmd + command_args
+        if timeout:
+            if not isinstance(timeout, Real) or timeout <= 0:
+                raise ExecutorError(
+                    'timeout must be a positive number, timeout=%r' % timeout)
+            cmd = ['timeout', '--kill-after=5', str(int(timeout))] + cmd
+        popen = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True)
+        self.log.info('Job process started with pid %s: %s' % (
+            popen.pid, cmd))
+
+        output = BytesIO()
+        self._handle_output(popen, output, output_callback)
+        exit_code, killed = self._wait_for_exit(popen)
+
+        if killed:
+            msg = ('Killed job process after timeout of {} seconds'
+                   '').format(timeout)
+            self._write_output('executor', msg + '\n', output)
+            self.log.warning(msg)
+
+        msg = 'Job process exited with code {}'.format(exit_code)
+        self._write_output('executor', msg + '\n', output)
+        output_callback(output.getvalue())
+        if exit_code != 0:
+            self.log.warning(msg)
+        else:
+            self.log.info(msg)
+        return exit_code
+
+    def _handle_output(self, popen, out_buffer, out_callback):
         stdout_lines = iter(popen.stdout.readline, "")
         stderr_lines = iter(popen.stderr.readline, "")
 
-        def write_lines(what, lines, buffer):
-            buffer.write('******** %s ********\n\n' % what)
-            last_send = 0
-            send_interval = 5
-            for line in lines:
-                if url_output:
-                    buffer.write(line)
-                    if time() - last_send > send_interval:
-                        # TODO: Limit size of buffer
-                        self.api.update_output(url_output, buffer.getvalue())
-                        last_send = time()
-                if line.strip():
-                    self.log.info('Job %s output: %s' % (what, line))
+        t_stdout = Thread(target=self._read_lines, args=(
+            'stdout', stdout_lines, out_buffer, out_callback))
+        t_stderr = Thread(target=self._read_lines, args=(
+            'stderr', stderr_lines, out_buffer, out_callback))
+        t_stdout.start()
+        t_stderr.start()
+        return t_stdout, t_stderr
 
-        buffer = BytesIO()
-        write_lines('stdout', stdout_lines, buffer)
-        write_lines('stderr', stderr_lines, buffer)
+    def _read_lines(self, what, lines, out_buffer, out_callback):
+        last_callback = 0
+        callback_interval = 5
+        for line in lines:
+            with self.output_lock:
+                self._write_output(what, line, out_buffer)
+                if time() - last_callback > callback_interval:
+                    out_callback(out_buffer.getvalue())
+                    last_callback = time()
+            if line.strip():
+                self.log.info('Job process %s: %s' % (what, line))
 
-        popen.stdout.close()
-        popen.stderr.close()
+    def _wait_for_exit(self, popen):
+        exit_code = popen.poll()
+        while exit_code is None:
+            sleep(1)
+            exit_code = popen.poll()
 
-        # TODO: Kill process if it takes too long before it exits
-        return_code = popen.wait()
-        msg = 'Job exited with code %r' % return_code
-        if url_output:
-            buffer.write(msg + '\n')
-            self.api.update_output(url_output, buffer.getvalue())
-        if return_code != 0:
-            self.log.warning(msg)
-            return False
-        else:
-            self.log.info(msg)
-            return True
+        killed = exit_code in (124, 128+9)
+
+        for what, stream in (('stdout', popen.stdout),
+                             ('stderr', popen.stderr)):
+            try:
+                stream.close()
+            except Exception as e:
+                self.log.warning(
+                    'Could not close command {}: <{}> {}'.format(
+                        what, e.__class__.__name__, e))
+
+        return exit_code, killed
+
+    @staticmethod
+    def _write_output(what, msg, output):
+        output.write('%s - %s: %s' % (
+            datetime.utcnow().isoformat(), what.upper(), msg))
 
 
 def get_argparser():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description='Start UWorker service if no input url is provided.')
     parser.add_argument(
         'INPUT_DATA_URL', nargs='?',
-        help='If provided, run command on this input url and exit')
+        help='If provided, run job command on this input url and exit.')
     return parser
 
 
@@ -202,7 +284,7 @@ def main(args=None):
     args = parser.parse_args(args)
     if args.INPUT_DATA_URL:
         worker = UWorker()
-        worker.do_job(args.INPUT_DATA_URL)
+        return worker.do_job(args.INPUT_DATA_URL)
     else:
         print('Spawning worker')
         UWorker(start_service=True)

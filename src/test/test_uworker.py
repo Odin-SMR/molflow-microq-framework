@@ -108,23 +108,35 @@ class TestQsmrJob(BaseWithWorkerUser):
         super(TestQsmrJob, self).tearDown()
         requests.get(self.odin_mock_root + '?shutdown=1')
 
-    def test_job(self):
+    def test_success(self):
+        self._test_job()
+
+    def test_failure(self):
+        self._test_job(should_succeed=False)
+
+    def _test_job(self, should_succeed=True):
         """Start a fake odin api server and run a qsmr job"""
         self._insert_qsmr_job()
         # Wait for result
         start = time()
         max_wait = 60*3
-        while not self.odin_api.result:
+        job_status = self._get_job_status()
+        while (job_status not in (JOB_STATES.finished, JOB_STATES.failed) and
+               not self.odin_api.result):
             sleep(1)
             if time() - start > max_wait:
                 break
-        print('Result: %r' % self.odin_api.result.keys())
+            job_status = self._get_job_status()
+        if self.odin_api.result:
+            print('Result: %r' % self.odin_api.result.keys())
+        else:
+            print('No results!')
 
         # Wait for job to finish
         start = time()
         max_wait = 10
         job_status = self._get_job_status()
-        while job_status['Status'] == JOB_STATES.started:
+        while job_status == JOB_STATES.started:
             sleep(1)
             if time() - start > max_wait:
                 break
@@ -134,7 +146,12 @@ class TestQsmrJob(BaseWithWorkerUser):
         print('Job output: %r' % self._get_job_output())
         print('Job results should have been written to %s' % os.path.join(
             TEST_DATA_DIR, 'odin_result.json'))
-        self.assertEqual(job_status['Status'], JOB_STATES.finished)
+        if should_succeed:
+            self.assertEqual(job_status, JOB_STATES.finished)
+            self.assertTrue(self.odin_api.result)
+        else:
+            self.assertEqual(job_status, JOB_STATES.failed)
+            self.assertIsNone(self.odin_api.result)
 
     def _insert_qsmr_job(self):
         self._insert_job(
@@ -147,7 +164,7 @@ class TestQsmrJob(BaseWithWorkerUser):
             self._apiroot + '/v4/{}/jobs/{}/status'.format(
                 self._project, self.JOB_ID),
             auth=(self._username, self._password))
-        return r.json()
+        return r.json()['Status']
 
     def _get_job_output(self):
         r = requests.get(
