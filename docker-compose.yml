@@ -29,6 +29,8 @@ uworker:
   environment:
     - UWORKER_HOSTNAME=test_host
     - UWORKER_CONTAINER_NAME=test_container
+    # Start with timeout to test qsmr job failure
+    # - UWORKER_JOB_TIMEOUT=10
     - UWORKER_JOB_API_ROOT=http://webapi:5000/rest_api
     - UWORKER_JOB_API_PROJECT=testproject
     - UWORKER_JOB_API_USERNAME=worker1
