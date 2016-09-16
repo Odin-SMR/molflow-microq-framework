@@ -70,34 +70,32 @@ class UClient(object):
 
     def get_job_list(self):
         """Request list of jobs from server."""
-        return self._call_api(self.project_uri + "/jobs", auth=self.auth)
+        return self._call_api(self.project_uri + "/jobs")
 
     def fetch_job(self, job_type=None):
         """Request an unprocessed job from server."""
         url = self.project_uri + "/jobs/fetch"
         if job_type:
             url += '?{}'.format(urllib.urlencode({'type': job_type}))
-        return self._call_api(url, auth=self.auth)
+        return self._call_api(url)
 
     def claim_job(self, url, worker_name):
         """Claim job from server"""
         # TODO: Worker node info
-        return self._call_api(url, 'PUT', json={"Worker": worker_name},
-                              auth=self.auth)
+        return self._call_api(url, 'PUT', json={"Worker": worker_name})
 
     def update_output(self, url, output):
         """Update output of job."""
         return self._call_api(url, 'PUT', json={'Output': output},
-                              headers={'Content-Type': "application/json"},
-                              auth=self.auth)
+                              headers={'Content-Type': "application/json"})
 
     def update_status(self, url, status):
         """Update status of job."""
         return self._call_api(url, 'PUT', json={'Status': status},
-                              headers={'Content-Type': "application/json"},
-                              auth=self.auth)
+                              headers={'Content-Type': "application/json"})
 
-    def _call_api(self, url, method='GET', renew_token=True, **kwargs):
+    def _call_api(self, url, method='GET', renew_token=True, auth=None,
+                  **kwargs):
         """Call micro service.
 
         Returns:
@@ -106,8 +104,10 @@ class UClient(object):
            UClientError: When api call failes.
         """
         # TODO: retry
+        if auth is None:
+            auth = self.auth
         try:
-            r = getattr(requests, method.lower())(url, **kwargs)
+            r = getattr(requests, method.lower())(url, auth=auth, **kwargs)
         except Exception as e:
             # TODO: log exception
             raise UClientError('API call to %r failed: %s' % (url, e))
