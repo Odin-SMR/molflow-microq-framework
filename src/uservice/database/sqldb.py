@@ -1,12 +1,14 @@
 from datetime import datetime
+from operator import itemgetter
 
-from sqlalchemy import create_engine, and_, false
+from sqlalchemy import (
+    create_engine, and_, false, func, select, distinct as sqldistinct)
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, TIMESTAMP as DateTime, String, Text, Boolean
 
-from utils.defs import JOB_STATES
-from uservice.database.basedb import BaseJobDatabaseAPI
+from utils.defs import JOB_STATES, TIME_PERIODS
+from uservice.database.basedb import BaseJobDatabaseAPI, STATE_TO_TIMESTAMP
 
 engine = db_session = None
 Base = declarative_base()
@@ -18,6 +20,9 @@ def get_job_model(project):
     global MODELS, Base
     if project in MODELS:
         return MODELS[project]
+
+    # TODO: Make a class factory instead (got warning from sqlalchemy when
+    #       creating more than one Job class)
 
     class Job(Base):
         __tablename__ = 'jobs_%s' % project
@@ -70,6 +75,57 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
             if fields:
                 job_dict = {k: v for k, v in job_dict.items() if k in fields}
             yield job_dict
+
+    def count_jobs(self, group_by='current_status'):
+        """Count jobs grouped by the values of a field."""
+        group_by = getattr(self.model, group_by)
+        query = select([func.count('*'), group_by], group_by=group_by)
+        return {row[1]: row[0] for row in self.db_session.execute(query)}
+
+    def count_jobs_per_time_period(self, job_state,
+                                   time_period=TIME_PERIODS.hourly,
+                                   count_field_name=None,
+                                   distinct=False):
+        """Count jobs per time period when they entered a certain job state.
+
+        Args:
+          job_state (str): One off `utils.defs.JOB_STATES`.
+          time_periods (str): One off `utils.defs.TIME_PERIODS`.
+          count_field_name (str): Count this field.
+          distinct (bool): If True, count nr of unique values of the field.
+
+        Returns:
+          counts ([{'time': str, 'count': int}]): Count per time period.
+        """
+        ts = getattr(self.model, STATE_TO_TIMESTAMP[job_state])
+        count = '*'
+        if count_field_name:
+            count = getattr(self.model, count_field_name)
+        if distinct:
+            count = sqldistinct(count)
+
+        group_by = []
+        format_str = ''
+        periods = [(TIME_PERIODS.yearly, func.year, '%Y'),
+                   (TIME_PERIODS.monthly, func.month, '-%m'),
+                   (TIME_PERIODS.daily, func.day, '-%d'),
+                   (TIME_PERIODS.hourly, func.hour, ' %H:00')]
+        for period, sqlfunc, fmt in periods:
+            group_by.append(sqlfunc(ts))
+            format_str += fmt
+            if period == time_period:
+                break
+
+        query = select([func.count(count)] + group_by, group_by=group_by)
+        counts = []
+        for row in self.db_session.execute(query):
+            if not row[1]:
+                # These jobs have not been in this job state.
+                continue
+            counts.append({'time': datetime(*row[1:]).strftime(format_str),
+                           'count': row[0]})
+        counts.sort(key=itemgetter('time'))
+        return counts
 
     def job_exists(self, job_id):
         if self.model.query.filter_by(id=job_id).first():

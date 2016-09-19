@@ -8,11 +8,7 @@ from utils.defs import JOB_STATES
 
 from uservice.views.basic_views import abort, BasicProjectView
 from uservice.core.users import auth
-
-STATE_TO_TIMESTAMP = {
-    JOB_STATES.claimed: 'claimed_timestamp',
-    JOB_STATES.finished: 'finished_timestamp',
-    JOB_STATES.failed: 'failed_timestamp'}
+from uservice.database.basedb import STATE_TO_TIMESTAMP
 
 
 class BasicJobView(BasicProjectView):

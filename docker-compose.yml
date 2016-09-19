@@ -20,7 +20,7 @@ webapi:
     - mysqlhost
 
 uworker:
-  image: docker2.molflow.com/devops/odinapi_mcr
+  image: docker2.molflow.com/devops/odinapi_mcr:160916
   # Normal entrypoint does not work because of mount of volume
   entrypoint: [python, /app/uworker/uworker.py]
   # For interactive mode

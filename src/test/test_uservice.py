@@ -155,3 +155,73 @@ class TestJobViews(BaseWithWorkerUser):
                          headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
+
+
+class TestProjectViews(BaseWithWorkerUser):
+
+    def test_project_status(self):
+        """Test get project status"""
+        self.maxDiff = None
+        jobs = [
+            {'id': '1',
+             'type': 'test',
+             'worker': 'worker1',
+             'added_timestamp': '2000-01-01 10:00',
+             'claimed_timestamp': '2000-01-01 10:00',
+             'finished_timestamp': '2000-01-01 10:00',
+             'current_status': 'FINISHED'
+             },
+            {'id': '2',
+             'type': 'test',
+             'worker': 'worker2',
+             'added_timestamp': '2000-01-01 10:00',
+             'claimed_timestamp': '2000-01-01 10:00',
+             'failed_timestamp': '2000-01-01 10:00',
+             'current_status': 'FAILED'
+             },
+            {'id': '3',
+             'type': 'test',
+             'worker': 'worker1',
+             'added_timestamp': '2000-01-01 10:00',
+             'claimed_timestamp': '2000-01-01 11:00',
+             'finished_timestamp': '2000-01-01 11:00',
+             'current_status': 'FINISHED'
+             },
+            {'id': '4',
+             'type': 'test',
+             'added_timestamp': '2000-01-01 10:00',
+             }
+        ]
+        for job in jobs:
+            assert self._insert_job(job) == 201
+
+        # Test default period
+        r = requests.get(self._apiroot + "/v4/project",
+                         auth=self._auth)
+        self.assertEqual(r.status_code, 200)
+        expected = {
+            u'ClaimedHourly': [{u'count': 2, u'time': u'2000-01-01 10:00'},
+                               {u'count': 1, u'time': u'2000-01-01 11:00'}],
+            u'ETA': u'0:30:00',
+            u'FailedHourly': [{u'count': 1, u'time': u'2000-01-01 10:00'}],
+            u'FinishedHourly': [{u'count': 1, u'time': u'2000-01-01 10:00'},
+                                {u'count': 1, u'time': u'2000-01-01 11:00'}],
+            u'JobStates': {u'AVAILABLE': 1, u'FAILED': 1, u'FINISHED': 2},
+            u'WorkersHourly': [{u'count': 2, u'time': u'2000-01-01 10:00'},
+                               {u'count': 1, u'time': u'2000-01-01 11:00'}]
+        }
+        self.assertEqual(r.json()['Status'], expected)
+
+        # Test daily period
+        r = requests.get(self._apiroot + "/v4/project?period=daily",
+                         auth=self._auth)
+        self.assertEqual(r.status_code, 200)
+        expected = {
+            u'ClaimedDaily': [{u'count': 3, u'time': u'2000-01-01'}],
+            u'ETA': u'8:00:00',
+            u'FailedDaily': [{u'count': 1, u'time': u'2000-01-01'}],
+            u'FinishedDaily': [{u'count': 2, u'time': u'2000-01-01'}],
+            u'JobStates': {u'AVAILABLE': 1, u'FAILED': 1, u'FINISHED': 2},
+            u'WorkersDaily': [{u'count': 2, u'time': u'2000-01-01'}]}
+
+        self.assertEqual(r.json()['Status'], expected)
