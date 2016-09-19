@@ -3,7 +3,13 @@ from datetime import datetime
 
 from flask import g
 
-from utils.defs import JOB_STATES
+from utils.defs import JOB_STATES, TIME_PERIODS
+
+STATE_TO_TIMESTAMP = {
+    JOB_STATES.available: 'added_timestamp',
+    JOB_STATES.claimed: 'claimed_timestamp',
+    JOB_STATES.finished: 'finished_timestamp',
+    JOB_STATES.failed: 'failed_timestamp'}
 
 
 def get_db(project, cls, **dbsettings):
@@ -43,6 +49,15 @@ class BaseJobDatabaseAPI(object):
         return self._insert_job(job_id, job_data)
 
     def get_jobs(self, job_id=None, match=None, fields=None):
+        raise NotImplementedError
+
+    def count_jobs(self, group_by='current_status'):
+        raise NotImplementedError
+
+    def count_jobs_per_time_period(self, job_state,
+                                   time_period=TIME_PERIODS.hourly,
+                                   count_field_name=None,
+                                   distinct=False):
         raise NotImplementedError
 
     def job_exists(self, job_id):
