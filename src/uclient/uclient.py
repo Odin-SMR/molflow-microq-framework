@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 import json
 import urllib
+from time import sleep
 import requests
 
 from utils.validate import validate_project_name
@@ -20,7 +21,25 @@ class UClient(object):
     """API to the micro service"""
 
     def __init__(self, apiroot, project, username=None, password=None,
-                 credentials_file=None, verbose=False):
+                 credentials_file=None, verbose=False, retries=5,
+                 time_between_retries=60):
+        """
+        Init the api client.
+
+        Args:
+          apiroot (str): Root url to the micro service.
+          project (str): Name of the processing project.
+          username (str): Micro service username.
+          password (str): Micro service password
+          credentials_file (str): Path to file that contains micro service
+            credentials. This is an alternative to passing username/password
+            as arguments.
+          verbose (bool): If True, print api responses.
+          retries (int): Retry the requests to the micro service at most This
+            many times.
+          time_between_retries (int): Number of seconds between the retry
+            requests.
+        """
         if not validate_project_name(project):
             raise UClientError('Unsupported project name')
         self.uri = apiroot.strip('/')
@@ -30,12 +49,12 @@ class UClient(object):
         self.credentials = self._get_credentials(
             username, password, credentials_file)
         self.token = None
+        self.retries = retries
+        self.time_between_retries = time_between_retries
 
     def renew_token(self):
         """
         Renew token for token based authorization.
-
-        Might not be necessary.
         """
         url = self.uri + "/token"
         auth = (self.credentials['username'], self.credentials['password'])
@@ -103,23 +122,28 @@ class UClient(object):
         Raises:
            UClientError: When api call failes.
         """
-        # TODO: retry
         if auth is None:
             auth = self.auth
-        try:
-            r = getattr(requests, method.lower())(url, auth=auth, **kwargs)
-        except Exception as e:
-            # TODO: log exception
+        response = None
+        for _ in range(self.retries):
+            try:
+                response = getattr(
+                    requests, method.lower())(url, auth=auth, **kwargs)
+                break
+            except Exception as e:
+                # TODO: log exception
+                sleep(self.time_between_retries)
+        if response is None:
             raise UClientError('API call to %r failed: %s' % (url, e))
         if self.verbose:
-            print(r.text)
-        if renew_token and r.status_code == 401:
+            print(response.text)
+        if renew_token and response.status_code == 401:
             self.renew_token()
             return self._call_api(
                 url, method=method, renew_token=False, **kwargs)
-        if r.status_code > 299:
-            raise UClientError(r.reason, r.status_code)
-        return r
+        if response.status_code > 299:
+            raise UClientError(response.reason, response.status_code)
+        return response
 
     @property
     def auth(self):
