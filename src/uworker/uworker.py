@@ -19,6 +19,7 @@ from threading import Thread, Lock
 from numbers import Real
 
 from uclient.uclient import UClient, UClientError, Job
+from utils import debug_util
 from utils.logs import get_logger
 from utils.defs import JOB_STATES
 
@@ -69,7 +70,7 @@ class UWorker(object):
     The worker can also provide the command with credentials to the
     target url if needed.
 
-    >> /path/to/command INPUT_URL [TARGET_URL USERNAME PASSWORD]]
+    >>> /path/to/command INPUT_URL [TARGET_URL USERNAME PASSWORD]]
 
     The command should only exit successfully if the result was accepted
     by the target api. The worker can then set the status of the job to
@@ -101,12 +102,16 @@ class UWorker(object):
         self.executor = CommandExecutor(self.cmd, self.log)
         self.api = UClient(config['api_root'], config['api_project'],
                            username=config['api_username'],
-                           password=config['api_password'])
+                           password=config['api_password'],
+                           time_between_retries=self.ERROR_SLEEP)
         self.external_auth = (config['external_username'],
                               config['external_password'])
         if start_service:
             self.alive = True
             signal.signal(signal.SIGINT, self.stop)
+            signal.signal(signal.SIGTERM, self.stop)
+            self.log_stacks_thread = Thread(target=self._log_stack_trace)
+            self.log_stacks_thread.start()
             self.run()
 
     def log_config(self, config):
@@ -138,6 +143,7 @@ class UWorker(object):
         self.running = False
 
     def stop(self, signal, frame):
+        # TODO: Should kill job command and unclaim current job
         self.alive = False
 
     def claim_job(self, job, nr_trials=5):
@@ -146,7 +152,8 @@ class UWorker(object):
                 job.claim(worker=self.name)
                 return True
             except UClientError as e:
-                # TODO: Separate api error and already claimed error
+                if e.status_code == 409:
+                    return False
                 self.log.error('Failed job claim: %s' % e)
                 sleep(self.ERROR_SLEEP)
         return False
@@ -159,14 +166,27 @@ class UWorker(object):
 
         def output_callback(output):
             if url_output:
-                # TODO: Limit size of output that can be sent
-                self.api.update_output(url_output, output)
+                try:
+                    # TODO: Limit size of output that can be sent
+                    self.api.update_output(url_output, output)
+                except:
+                    self.log.exception(
+                        'Exception when sending output to job api:')
 
         self.log.info('Starting job: %s' % args)
         # TODO: Add support for letting a job override the configured timeout
         exit_code = self.executor.execute(
             args, output_callback, timeout=self.job_timeout)
         return exit_code
+
+    def _log_stack_trace(self, log_interval=60):
+        last_log = time()
+        while self.alive:
+            sleep(1)
+            if time() - last_log > log_interval:
+                for stack in debug_util.get_current_stacks():
+                    self.log.info('Stacktrace snapshot:\n %s' % stack)
+                last_log = time()
 
 
 class ExecutorError(Exception):

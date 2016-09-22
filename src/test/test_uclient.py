@@ -13,7 +13,8 @@ class BaseTestUClient(BaseWithWorkerUser):
         credentials = (credentials if credentials is not None
                        else self._credentials)
         project = project if project is not None else self._project
-        return UClient(self._apiroot, project, verbose=True, **credentials)
+        return UClient(self._apiroot, project, verbose=True,
+                       time_between_retries=0.01, **credentials)
 
 
 class TestErrors(BaseTestUClient):

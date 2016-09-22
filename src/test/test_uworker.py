@@ -54,9 +54,9 @@ class TestUWorker(BaseWithWorkerUser):
             os.environ[k] = v
 
     def _run_once(self, expected_jobs_count=0):
+        uworker.UWorker.IDLE_SLEEP = .01
+        uworker.UWorker.ERROR_SLEEP = .01
         w = uworker.UWorker()
-        w.IDLE_SLEEP = .1
-        w.ERROR_SLEEP = .1
         w.alive = True
         self.assertEqual(w.job_count, 0)
         w.run(only_once=True)
