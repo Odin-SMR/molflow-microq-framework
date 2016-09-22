@@ -30,7 +30,6 @@ class BasicView(MethodView):
         self.log = get_logger('UService')
         super(BasicView, self).__init__()
 
-    @auth.login_required
     def get(self, version):
         """GET"""
         self._check_version(version)
@@ -95,7 +94,6 @@ class BasicProjectView(BasicView):
         return get_db(
             project, SqlJobDatabase, dburl=environ['USERVICE_DATABASE_URI'])
 
-    @auth.login_required
     def get(self, version, project):
         """GET"""
         self._check_version(version)
@@ -146,12 +144,10 @@ class ListJobs(BasicProjectView):
         """
         Return a JSON object with a list of jobs with URIs for
         getting data etc.
-        # TODO: Should only return unclaimed jobs?
         """
         db = self._get_database(project)
-        jobs = list(db.get_jobs(fields=['id', 'source_url', 'target_url']))
-        job_list = self._make_job_list(project, jobs)
-        return jsonify(Version=version, Project=project, Jobs=job_list)
+        jobs = list(db.get_jobs(fields=db.PUBLIC_LISTING_FIELDS))
+        return jsonify(Version=version, Project=project, Jobs=jobs)
 
     def _post_view(self, version, project):
         """
@@ -165,36 +161,20 @@ class ListJobs(BasicProjectView):
         db.insert_job(job_id, job)
         return jsonify(Version=version, Project=project, ID=job_id), 201
 
-    def _make_job_list(self, project, jobs):
-        return [
-            self._make_job(project, job)
-            for job in jobs
-        ]
-
-    def _make_job(self, project, job_data):
-
-        job_id, source_url, target_url = (
-            job_data['id'], job_data['source_url'], job_data['target_url'])
-
-        def make_url(endpoint, job_id):
-            return "{0}rest_api/v4/{1}/jobs/{2}/{3}".format(
-                request.url_root, project, job_id, endpoint)
-
-        job = {
-            'JobID': job_id,
-            'URLS': {'URL-source': source_url,
-                     'URL-target': target_url}}
-
-        for endpoint in ['claim', 'status', 'output']:
-            job["URLS"]["URL-{}".format(endpoint)] = make_url(
-                endpoint, job_id)
-        return job
-
 
 class FetchNextJob(ListJobs):
-    """View for fetching next job from queue"""
+    """View for fetching data needed by the worker for the next job
+    in the queue.
+    """
     def __init__(self):
         super(FetchNextJob, self).__init__()
+
+    @auth.login_required
+    def get(self, version, project):
+        """GET"""
+        self._check_version(version)
+        self._check_project(project)
+        return self._get_view(version, project)
 
     # TODO: Use url parameter 'type'
     def _get_view(self, version, project):
@@ -218,3 +198,32 @@ class FetchNextJob(ListJobs):
             return abort(404, 'No unclaimed jobs available')
         job = self._make_job(project, job)
         return jsonify(Version=version, Job=job)
+
+    def _make_job(self, project, job_data):
+        """Create dict that contains the data needed by the worker:
+
+        {'JobID': str,
+         'URLS': {
+            'URL-source': str,
+            'URL-target': str,
+            'URL-claim': str,
+            'URL-status': str,
+            'URL-output': str,
+        }}
+        """
+        job_id, source_url, target_url = (
+            job_data['id'], job_data['source_url'], job_data['target_url'])
+
+        def make_url(endpoint, job_id):
+            return "{0}rest_api/v4/{1}/jobs/{2}/{3}".format(
+                request.url_root, project, job_id, endpoint)
+
+        job = {
+            'JobID': job_id,
+            'URLS': {'URL-source': source_url,
+                     'URL-target': target_url}}
+
+        for endpoint in ['claim', 'status', 'output']:
+            job["URLS"]["URL-{}".format(endpoint)] = make_url(
+                endpoint, job_id)
+        return job

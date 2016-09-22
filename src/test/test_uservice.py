@@ -78,13 +78,16 @@ class TestBasicViews(BaseInsertedJobs):
 
     def test_list_jobs(self):
         """Test requesting list of jobs."""
-        r = requests.get(self._apiroot + "/v4/project/jobs",
-                         auth=self._auth)
+        r = requests.get(self._apiroot + "/v4/project/jobs")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.json()["Jobs"]), 1)
 
     def test_fetch_job(self):
         """Test requesting a free job."""
+        # Should need auth
+        r = requests.get(self._apiroot + "/v4/project/jobs/fetch")
+        self.assertEqual(r.status_code, 401)
+
         r = requests.get(self._apiroot + "/v4/project/jobs/fetch",
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
@@ -196,8 +199,7 @@ class TestProjectViews(BaseWithWorkerUser):
             assert self._insert_job(job) == 201
 
         # Test default period
-        r = requests.get(self._apiroot + "/v4/project",
-                         auth=self._auth)
+        r = requests.get(self._apiroot + "/v4/project")
         self.assertEqual(r.status_code, 200)
         expected = {
             u'ClaimedHourly': [{u'count': 2, u'time': u'2000-01-01 10:00'},
@@ -213,8 +215,7 @@ class TestProjectViews(BaseWithWorkerUser):
         self.assertEqual(r.json()['Status'], expected)
 
         # Test daily period
-        r = requests.get(self._apiroot + "/v4/project?period=daily",
-                         auth=self._auth)
+        r = requests.get(self._apiroot + "/v4/project?period=daily")
         self.assertEqual(r.status_code, 200)
         expected = {
             u'ClaimedDaily': [{u'count': 3, u'time': u'2000-01-01'}],
