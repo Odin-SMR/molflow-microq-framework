@@ -40,6 +40,11 @@ class BaseJobDatabaseAPI(object):
     # TODO: Put this in a job model
     CLAIMED = 'claimed'
     CLAIMED_TIMESTAMP = 'claimed_timestamp'
+    PUBLIC_FIELDS = [
+        'id', 'type', 'source_url', 'claimed', 'current_status', 'worker',
+        'added_timestamp', 'claimed_timestamp', 'failed_timestamp',
+        'finished_timestamp', 'worker_output']
+    PUBLIC_LISTING_FIELDS = PUBLIC_FIELDS[:-1]
 
     def __init__(self, project):
         self.project = project
