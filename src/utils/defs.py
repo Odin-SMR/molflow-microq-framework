@@ -2,7 +2,10 @@ from datetime import timedelta
 
 
 def enum(**enums):
-    return type('Enum', (), enums)
+    values = set(value for value in enums.itervalues())
+    t = type('Enum', (), enums)
+    t.all_values = values
+    return t
 
 JOB_STATES = enum(
     available='AVAILABLE',

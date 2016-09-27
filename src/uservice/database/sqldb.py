@@ -7,7 +7,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, TIMESTAMP as DateTime, String, Text, Boolean
 
-from utils.defs import JOB_STATES, TIME_PERIODS
+from utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
 from uservice.database.basedb import BaseJobDatabaseAPI, STATE_TO_TIMESTAMP
 
 engine = db_session = None
@@ -61,23 +61,52 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
         self.model.query = db_session.query_property()
         self.model.__table__.create(db_session.bind, checkfirst=True)
 
-    def get_jobs(self, job_id=None, match=None, fields=None):
-        if job_id:
-            job = self.model.query.filter_by(id=job_id).first()
-            jobs = [job] if job else []
-        else:
-            match = match or {}
-            jobs = self.model.query.filter_by(**match)
-        for job in jobs:
-            job_dict = {c.name: getattr(job, c.name)
-                        for c in job.__table__.columns}
+    @staticmethod
+    def _translate_dict(job_dict):
+        if 'job_type' in job_dict:
             job_dict['type'] = job_dict.pop('job_type')
-            if fields:
-                job_dict = {k: v for k, v in job_dict.items() if k in fields}
-            yield job_dict
+        return job_dict
+
+    def _get_job(self, job_id, fields):
+        job = self.model.query.filter_by(id=job_id).first()
+        if not job:
+            return
+        job_dict = {c.name: getattr(job, c.name)
+                    for c in job.__table__.columns}
+        job_dict = self._translate_dict(job_dict)
+        if fields:
+            job_dict = {k: v for k, v in job_dict.items() if k in fields}
+        return job
+
+    def _get_jobs(self, fields, match=None, start_time=None, end_time=None,
+                  time_field=None, limit=None):
+        """See parent docstring"""
+        expressions = []
+        if match:
+            for k, v in match.items():
+                if k == 'type':
+                    k = 'job_type'
+                expressions.append(getattr(self.model, k) == v)
+        timestamp_col = None
+        if time_field:
+            timestamp_col = getattr(self.model, time_field)
+            if start_time:
+                expressions.append(timestamp_col >= start_time)
+            if end_time:
+                expressions.append(timestamp_col < end_time)
+        whereclause = and_(*expressions) if expressions else None
+        if 'type' in fields:
+            fields.remove('type')
+            fields.append('job_type')
+
+        fields = [getattr(self.model, field) for field in fields]
+        query = select(fields, whereclause=whereclause, order_by=timestamp_col,
+                       limit=limit)
+        for row in self.db_session.execute(query):
+            job_dict = dict(zip(row.keys(), row))
+            yield self._translate_dict(job_dict)
 
     def count_jobs(self, group_by='current_status'):
-        """Count jobs grouped by the values of a field."""
         group_by = getattr(self.model, group_by)
         query = select([func.count('*'), group_by], group_by=group_by)
         return {row[1]: row[0] for row in self.db_session.execute(query)}
@@ -86,17 +115,7 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
                                    time_period=TIME_PERIODS.hourly,
                                    count_field_name=None,
                                    distinct=False):
-        """Count jobs per time period when they entered a certain job state.
-
-        Args:
-          job_state (str): One off `utils.defs.JOB_STATES`.
-          time_periods (str): One off `utils.defs.TIME_PERIODS`.
-          count_field_name (str): Count this field.
-          distinct (bool): If True, count nr of unique values of the field.
-
-        Returns:
-          counts ([{'time': str, 'count': int}]): Count per time period.
-        """
+        """See parent docstring"""
         ts = getattr(self.model, STATE_TO_TIMESTAMP[job_state])
         count = '*'
         if count_field_name:
@@ -122,9 +141,13 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
             if not row[1]:
                 # These jobs have not been in this job state.
                 continue
-            counts.append({'time': datetime(*row[1:]).strftime(format_str),
-                           'count': row[0]})
-        counts.sort(key=itemgetter('time'))
+            dt = datetime(*row[1:])
+            counts.append({
+                'period': dt.strftime(format_str),
+                'count': row[0],
+                'start_time': dt,
+                'end_time': dt + TIME_PERIOD_TO_DELTA[time_period]})
+        counts.sort(key=itemgetter('start_time'))
         return counts
 
     def job_exists(self, job_id):
@@ -137,7 +160,7 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
         statement = self.model.__table__.update().where(
             and_(self.model.id == job_id,
                  self.model.claimed == false())).values(
-                claimed=True)
+                     claimed=True)
         result = self.db_session.execute(statement)
         self.db_session.flush()
         return bool(result.rowcount)
