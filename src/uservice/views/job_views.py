@@ -46,11 +46,11 @@ class JobStatus(BasicJobView):
     def _get_view(self, version, project, job_id):
         """Used to get job status"""
         db = self._get_database(project)
-        try:
-            job = next(db.get_jobs(job_id=job_id, fields=['current_status']))
-        except StopIteration:
+        job = db.get_job(job_id, fields=['current_status'])
+        if not job:
             return abort(404)
-        return jsonify(Status=job['current_status'])
+        return jsonify(Version=version, Project=project, ID=job_id,
+                       Status=job['current_status'])
 
     def _put_view(self, version, project, job_id):
         """Used to update job status"""
@@ -75,11 +75,11 @@ class JobOutput(BasicJobView):
     def _get_view(self, version, project, job_id):
         """Used to get job output"""
         db = self._get_database(project)
-        try:
-            job = next(db.get_jobs(job_id=job_id, fields=['worker_output']))
-        except StopIteration:
+        job = db.get_job(job_id, fields=['worker_output'])
+        if not job:
             return abort(404)
-        return jsonify(Output=job['worker_output'])
+        return jsonify(Version=version, Project=project, ID=job_id,
+                       Output=job['worker_output'])
 
     def _put_view(self, version, project, job_id):
         """Used to update job output"""
@@ -99,10 +99,9 @@ class JobClaim(BasicJobView):
     def _get_view(self, version, project, job_id):
         """Used to see which Worker has claimed job and at what time"""
         db = self._get_database(project)
-        try:
-            job = next(db.get_jobs(job_id=job_id, fields=[
-                'claimed', 'worker', 'claimed_timestamp']))
-        except StopIteration:
+        job = db.get_job(job_id, fields=[
+            'claimed', 'worker', 'claimed_timestamp'])
+        if not job:
             return abort(404)
         return jsonify(
             Version=version, Project=project, ID=job_id,

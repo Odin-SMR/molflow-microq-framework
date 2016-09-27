@@ -182,57 +182,90 @@ class TestJobViews(BaseWithWorkerUser):
         """Test updating job status."""
         job = requests.get(self._apiroot + "/v4/project/jobs/fetch",
                            auth=self._auth)
-        r = requests.put(job.json()["Job"]["URLS"]["URL-status"],
+        job = job.json()
+        r = requests.put(job["Job"]["URLS"]["URL-status"],
                          json={"BadStatus": "Testing status update."},
                          headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 400)
-        r = requests.put(job.json()["Job"]["URLS"]["URL-status"],
+        r = requests.put(job["Job"]["URLS"]["URL-status"],
                          json={"Status": "Testing status update."},
                          headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
 
+        # Fetch current status
+        r = requests.get(self._apiroot + "/v4/project/jobs/{}/status".format(
+            job['Job']['JobID']))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['Status'], "Testing status update.")
+
+        # Test fetch for none existing job
+        r = requests.get(self._apiroot + "/v4/project/jobs/none/status")
+        self.assertEqual(r.status_code, 404)
+
     def test_claim_job(self):
         """Test claiming a job."""
         job = requests.get(self._apiroot + "/v4/project/jobs/fetch",
                            auth=self._auth)
-        r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
+        job = job.json()
+        r = requests.put(job["Job"]["URLS"]["URL-claim"],
                          json={'BadWorker': self._username},
                          auth=self._auth)
         self.assertEqual(r.status_code, 400)
 
-        r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
+        r = requests.put(job["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
         # Should not be able to claim same job again
-        r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
+        r = requests.put(job["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
                          auth=self._auth)
         self.assertEqual(r.status_code, 409)
         # Should be able to claim after release of job
-        r = requests.delete(job.json()["Job"]["URLS"]["URL-claim"],
+        r = requests.delete(job["Job"]["URLS"]["URL-claim"],
                             auth=self._auth)
-        r = requests.put(job.json()["Job"]["URLS"]["URL-claim"],
+        r = requests.put(job["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
+
+        # Fetch current claim data
+        r = requests.get(self._apiroot + "/v4/project/jobs/{}/claim".format(
+            job['Job']['JobID']))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['Claimed'], True)
+
+        # Test fetch for none existing job
+        r = requests.get(self._apiroot + "/v4/project/jobs/none/claim")
+        self.assertEqual(r.status_code, 404)
 
     def test_update_job_output(self):
         """Test updating job output"""
         job = requests.get(self._apiroot + "/v4/project/jobs/fetch",
                            auth=self._auth)
-        r = requests.put(job.json()["Job"]["URLS"]["URL-output"],
+        job = job.json()
+        r = requests.put(job["Job"]["URLS"]["URL-output"],
                          json={"BadOutput": "Testing output update."},
                          headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 400)
-        r = requests.put(job.json()["Job"]["URLS"]["URL-output"],
+        r = requests.put(job["Job"]["URLS"]["URL-output"],
                          json={"Output": "Testing output update."},
                          headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
+
+        # Fetch current output
+        r = requests.get(self._apiroot + "/v4/project/jobs/{}/output".format(
+            job['Job']['JobID']))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['Output'], "Testing output update.")
+
+        # Test fetch for none existing job
+        r = requests.get(self._apiroot + "/v4/project/jobs/none/output")
+        self.assertEqual(r.status_code, 404)
 
 
 class TestProjectViews(BaseWithWorkerUser):
