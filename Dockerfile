@@ -11,7 +11,7 @@ run apt-get update && apt-get install -y \
 # TODO: Pin with version
 run pip install flask flask-bootstrap flask-httpauth flask-restful \
     passlib flask-sqlalchemy sqlalchemy pymysql jsonschema jsl \
-    ConcurrentLogHandler
+    ConcurrentLogHandler python-dateutil
 
 #************* DEPENDENCIES
 

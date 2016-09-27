@@ -2,11 +2,14 @@
 """
 from os import environ
 
+from dateutil.parser import parse as parse_datetime
+
 from flask import jsonify, abort as flask_abort, make_response, request
 from flask.views import MethodView
 
 from utils.validate import validate_project_name
 from utils.logs import get_logger
+from utils.defs import JOB_STATES
 
 from uservice.core.users import auth
 from uservice.database.basedb import get_db
@@ -135,19 +138,94 @@ class ListProjects(BasicView):
         return jsonify(Version=version)
 
 
+def make_job_url(endpoint, project, job_id):
+    return "{0}rest_api/v4/{1}/jobs/{2}/{3}".format(
+        request.url_root, project, job_id, endpoint)
+
+
+def fix_timestamp(ts):
+    if not ts:
+        return
+    # TODO: timezone
+    return ts.isoformat()
+
+
+def make_pretty_job(job, project):
+    """Transform job to json serializable dict with good looking keys"""
+    job['URLS'] = {
+        'URL-Input': job.pop('source_url'),
+        'URL-Output': make_job_url('output', project, job['id'])}
+    job['Id'] = job.pop('id')
+    job['Type'] = job.pop('type')
+    job['Status'] = job.pop('current_status')
+    job['Added'] = fix_timestamp(job.pop('added_timestamp'))
+    job['Claimed'] = fix_timestamp(job.pop('claimed_timestamp'))
+    job['Failed'] = fix_timestamp(job.pop('failed_timestamp'))
+    job['finished'] = fix_timestamp(job.pop('finished_timestamp'))
+    job['Worker'] = job.pop('worker')
+    return job
+
+
 class ListJobs(BasicProjectView):
     """View for listing jobs as JSON object"""
     _translate_backend = {'B': 'AC1', 'C': 'AC2', 'AC1': 'AC1', 'AC2': 'AC2'}
 
-    # TODO: Use url parameter 'type'
     def _get_view(self, version, project):
         """
         Return a JSON object with a list of jobs with URIs for
         getting data etc.
         """
+        job_type = request.args.get('type')
+        status = request.args.get('status')
+        worker = request.args.get('worker')
+        start = request.args.get('start')
+        end = request.args.get('end')
+
+        match = {}
+        if job_type:
+            match['type'] = job_type
+        if worker:
+            match['worker'] = worker
+        if status:
+            status = status.upper()
+            if status not in JOB_STATES.all_values:
+                return abort(400, 'Unsupported status: %r' % status)
+            match['current_status'] = status
+        if start:
+            try:
+                start = parse_datetime(start)
+            except ValueError:
+                return abort(400, 'Bad time format: %r' % start)
+        if end:
+            try:
+                end = parse_datetime(end)
+            except ValueError:
+                return abort(400, 'Bad time format: %r' % end)
+
         db = self._get_database(project)
-        jobs = list(db.get_jobs(fields=db.PUBLIC_LISTING_FIELDS))
-        return jsonify(Version=version, Project=project, Jobs=jobs)
+        if start or end:
+            if not status:
+                return abort(400, ('Param @start and @end can only be used '
+                                   'together with @status'))
+            match.pop('current_status')
+            if status == JOB_STATES.claimed:
+                fun = db.get_claimed_jobs
+            elif status == JOB_STATES.finished:
+                fun = db.get_finished_jobs
+            elif status == JOB_STATES.failed:
+                fun = db.get_failed_jobs
+            else:
+                return abort(400, 'Unsupported status: %r' % status)
+        else:
+            fun = db.get_jobs
+        jobs = list(fun(match=match, start_time=start, end_time=end,
+                        fields=db.PUBLIC_LISTING_FIELDS))
+
+        for job in jobs:
+            make_pretty_job(job, project)
+
+        return jsonify(Version=version, Project=project, Jobs=jobs,
+                       Status=status, Start=start, End=end, Worker=worker)
 
     def _post_view(self, version, project):
         """
@@ -196,10 +274,10 @@ class FetchNextJob(ListJobs):
                                    fields=['id', 'source_url', 'target_url']))
         except StopIteration:
             return abort(404, 'No unclaimed jobs available')
-        job = self._make_job(project, job)
+        job = self._make_worker_job(project, job)
         return jsonify(Version=version, Job=job)
 
-    def _make_job(self, project, job_data):
+    def _make_worker_job(self, project, job_data):
         """Create dict that contains the data needed by the worker:
 
         {'JobID': str,
@@ -214,16 +292,12 @@ class FetchNextJob(ListJobs):
         job_id, source_url, target_url = (
             job_data['id'], job_data['source_url'], job_data['target_url'])
 
-        def make_url(endpoint, job_id):
-            return "{0}rest_api/v4/{1}/jobs/{2}/{3}".format(
-                request.url_root, project, job_id, endpoint)
-
         job = {
             'JobID': job_id,
             'URLS': {'URL-source': source_url,
                      'URL-target': target_url}}
 
         for endpoint in ['claim', 'status', 'output']:
-            job["URLS"]["URL-{}".format(endpoint)] = make_url(
-                endpoint, job_id)
+            job["URLS"]["URL-{}".format(endpoint)] = make_job_url(
+                endpoint, project, job_id)
         return job
