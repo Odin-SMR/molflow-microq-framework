@@ -169,6 +169,39 @@ class TestListJobs(BaseWithWorkerUser):
             self.assertEqual(len(r.json()["Jobs"]), expected)
 
 
+class TestMultipleProjects(BaseWithWorkerUser):
+
+    def setUp(self):
+        self._delete_test_project()
+        self._delete_test_project(project='other')
+        jobs = [
+            {'id': '42', 'type': 'test_type',
+             'source_url': self.TEST_URL,
+             'target_url': self.TEST_URL},
+            {'id': '44', 'type': 'test_type',
+             'source_url': self.TEST_URL,
+             'target_url': self.TEST_URL}
+        ]
+        for job in jobs:
+            self._insert_job(job)
+        for job in jobs[:1]:
+            self._insert_job(job, project='other')
+
+    def tearDown(self):
+        self._delete_test_project()
+        self._delete_test_project(project='other')
+
+    def test_multiple_projects(self):
+        """Test that multiple projects work and are separated"""
+        r = requests.get(self._apiroot + "/v4/project/jobs")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.json()["Jobs"]), 2)
+
+        r = requests.get(self._apiroot + "/v4/other/jobs")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.json()["Jobs"]), 1)
+
+
 class TestJobViews(BaseWithWorkerUser):
 
     def setUp(self):
