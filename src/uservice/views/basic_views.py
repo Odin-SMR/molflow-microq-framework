@@ -225,7 +225,8 @@ class ListJobs(BasicProjectView):
             make_pretty_job(job, project)
 
         return jsonify(Version=version, Project=project, Jobs=jobs,
-                       Status=status, Start=start, End=end, Worker=worker)
+                       Status=status, Start=fix_timestamp(start),
+                       End=fix_timestamp(end), Worker=worker)
 
     def _post_view(self, version, project):
         """

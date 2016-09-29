@@ -4,49 +4,60 @@ from operator import itemgetter
 from sqlalchemy import (
     create_engine, and_, false, func, select, distinct as sqldistinct, inspect)
 from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, TIMESTAMP as DateTime, String, Text, Boolean
+from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.ext.declarative.base import _declarative_constructor
+from sqlalchemy import (
+    Column, TIMESTAMP as DateTime, String, Text, Boolean, Index)
 
 from utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
 from uservice.database.basedb import BaseJobDatabaseAPI, STATE_TO_TIMESTAMP
 
 engine = db_session = None
-Base = declarative_base()
 
 MODELS = {}
+
+
+class JobBase(object):
+
+    @declared_attr
+    def __tablename__(cls):
+        return 'jobs_%s' % cls.__name__[3:]
+
+    # TODO: encoding
+    # TODO: Throw exception if string too long to fit in column
+    id = Column(String(64), primary_key=True)
+    # Note: The attribute name is not the same as the column name
+    #       because 'type' is reserved in python.
+    job_type = Column('type', String(64))
+    source_url = Column(String(512))
+    target_url = Column(String(512))
+    added_timestamp = Column(DateTime(), default=datetime.utcnow, index=True)
+    claimed = Column(Boolean, default=False)
+    current_status = Column(
+        String(64), default=JOB_STATES.available, index=True)
+    worker = Column(String(64), index=True)
+    worker_output = Column(Text)
+    claimed_timestamp = Column(DateTime(), index=True)
+    finished_timestamp = Column(DateTime(), index=True)
+    failed_timestamp = Column(DateTime(), index=True)
+
+    @declared_attr
+    def __table_args__(cls):
+        return (Index('claimed_idx', "claimed", "type"), )
+
+
+def _job_constructor(self, **kwargs):
+    kwargs['job_type'] = kwargs.pop('type')
+    _declarative_constructor(self, **kwargs)
+
+Base = declarative_base(cls=JobBase, constructor=_job_constructor)
 
 
 def get_job_model(project):
     global MODELS, Base
     if project in MODELS:
         return MODELS[project]
-
-    # TODO: Make a class factory instead (got warning from sqlalchemy when
-    #       creating more than one Job class)
-
-    class Job(Base):
-        __tablename__ = 'jobs_%s' % project
-        # TODO: encoding, index
-        # TODO: Throw exception if string too long to fit in column
-        id = Column(String(64), primary_key=True)
-        # Note: The attribute name is not the same as the column name
-        #       because 'type' is reserved in python.
-        job_type = Column('type', String(64))
-        source_url = Column(String(512))
-        target_url = Column(String(512))
-        added_timestamp = Column(DateTime(), default=datetime.utcnow)
-        claimed = Column(Boolean, default=False)
-        current_status = Column(String(64), default=JOB_STATES.available)
-        worker = Column(String(64))
-        worker_output = Column(Text)
-        claimed_timestamp = Column(DateTime())
-        finished_timestamp = Column(DateTime())
-        failed_timestamp = Column(DateTime())
-
-        def __init__(self, **kwargs):
-            kwargs['job_type'] = kwargs.pop('type')
-            super(Job, self).__init__(**kwargs)
-
+    Job = type('Job%s' % project.encode('ascii'), (Base,), {})
     MODELS[project] = Job
     return Job
 

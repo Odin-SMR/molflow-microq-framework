@@ -22,9 +22,9 @@ class BaseTest(unittest.TestCase):
         cls._delete_test_project()
 
     @classmethod
-    def _delete_test_project(cls):
+    def _delete_test_project(cls, project=None):
         requests.delete(
-            cls._apiroot + '/v4/{}'.format(cls._project),
+            cls._apiroot + '/v4/{}'.format(project or cls._project),
             auth=(cls._token or cls._username, cls._password))
 
     @property
@@ -34,7 +34,7 @@ class BaseTest(unittest.TestCase):
         return (self._username, self._password)
 
     @classmethod
-    def _insert_test_jobs(cls):
+    def _insert_test_jobs(cls, project=None):
         jobs = [
             {'id': '42', 'type': 'test_type',
              'source_url': cls.TEST_URL,
@@ -42,13 +42,13 @@ class BaseTest(unittest.TestCase):
         ]
         # TODO: Only inserting one job because authentication takes ~0.5 secs
         for job in jobs[:1]:
-            status_code = cls._insert_job(job)
+            status_code = cls._insert_job(job, project=project)
             assert status_code == 201, status_code
 
     @classmethod
-    def _insert_job(cls, job):
+    def _insert_job(cls, job, project=None):
         r = requests.post(
-            cls._apiroot + '/v4/{}/jobs'.format(cls._project),
+            cls._apiroot + '/v4/{}/jobs'.format(project or cls._project),
             json=job, auth=(cls._token or cls._username, cls._password))
         return r.status_code
 
