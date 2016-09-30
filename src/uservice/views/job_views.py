@@ -45,7 +45,7 @@ class JobStatus(BasicJobView):
     """Get and set jobstatus as JSON object"""
     def _get_view(self, version, project, job_id):
         """Used to get job status"""
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         job = db.get_job(job_id, fields=['current_status'])
         if not job:
             return abort(404)
@@ -60,7 +60,7 @@ class JobStatus(BasicJobView):
         data = {'current_status': status}
         if status in STATE_TO_TIMESTAMP:
             data[STATE_TO_TIMESTAMP[status]] = datetime.utcnow()
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         if not db.job_exists(job_id):
             return abort(404)
         db.update_job(job_id, **data)
@@ -74,7 +74,7 @@ class JobOutput(BasicJobView):
     """Get and set job output as JSON object"""
     def _get_view(self, version, project, job_id):
         """Used to get job output"""
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         job = db.get_job(job_id, fields=['worker_output'])
         if not job:
             return abort(404)
@@ -85,7 +85,7 @@ class JobOutput(BasicJobView):
         """Used to update job output"""
         if not request.json or 'Output' not in request.json:
             return abort(400, 'Missing "Output" field in request data')
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         if not db.job_exists(job_id):
             return abort(404)
         db.update_job(job_id, worker_output=request.json['Output'])
@@ -98,7 +98,7 @@ class JobClaim(BasicJobView):
     """Claim job"""
     def _get_view(self, version, project, job_id):
         """Used to see which Worker has claimed job and at what time"""
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         job = db.get_job(job_id, fields=[
             'claimed', 'worker', 'claimed_timestamp'])
         if not job:
@@ -117,7 +117,7 @@ class JobClaim(BasicJobView):
         #       allowed to claim jobs.
         if not request.json or 'Worker' not in request.json:
             return abort(400, 'Missing "Worker" field in request data')
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         if not db.job_exists(job_id):
             return abort(404)
         if not db.claim_job(job_id):
@@ -127,6 +127,8 @@ class JobClaim(BasicJobView):
         worker = request.json['Worker']
         db.update_job(job_id, current_status=JOB_STATES.claimed,
                       claimed_timestamp=now, worker=worker)
+        projects_db = self._get_projects_database()
+        projects_db.job_claimed(project)
         self.log.info("Job {0} claimed by {1} to worker {2}".format(
             job_id, g.user.username, worker))
         return jsonify(Version=version, Project=project, ID=job_id,
@@ -135,7 +137,7 @@ class JobClaim(BasicJobView):
 
     def _delete_view(self, version, project, job_id):
         """Used to free a job"""
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         if not db.job_exists(job_id):
             return abort(404)
         if db.unclaim_job(job_id):

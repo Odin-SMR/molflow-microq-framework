@@ -1,10 +1,8 @@
 """ Basic views for REST api
 """
-from os import environ
-
 from dateutil.parser import parse as parse_datetime
 
-from flask import jsonify, abort as flask_abort, make_response, request
+from flask import jsonify, abort as flask_abort, make_response, request, g
 from flask.views import MethodView
 
 from utils.validate import validate_project_name
@@ -12,7 +10,8 @@ from utils.logs import get_logger
 from utils.defs import JOB_STATES
 
 from uservice.core.users import auth
-from uservice.database.basedb import get_db
+from uservice.database.basedb import get_db as get_jobs_db
+from uservice.database.projects import get_db as get_projects_db
 from uservice.database.sqldb import SqlJobDatabase
 
 
@@ -32,6 +31,9 @@ class BasicView(MethodView):
     def __init__(self):
         self.log = get_logger('UService')
         super(BasicView, self).__init__()
+
+    def _get_projects_database(self):
+        return get_projects_db()
 
     def get(self, version):
         """GET"""
@@ -93,9 +95,8 @@ class BasicView(MethodView):
 class BasicProjectView(BasicView):
     """Base class for project views"""
 
-    def _get_database(self, project):
-        return get_db(
-            project, SqlJobDatabase, dburl=environ['USERVICE_DATABASE_URI'])
+    def _get_jobs_database(self, project):
+        return get_jobs_db(project, SqlJobDatabase)
 
     def get(self, version, project):
         """GET"""
@@ -129,13 +130,34 @@ class BasicProjectView(BasicView):
             abort(404)
 
 
+def make_project_url(project):
+    return "{0}rest_api/v4/{1}".format(request.url_root, project)
+
+
+def make_pretty_project(project):
+    """Transform project to json serializable dict with good looking keys"""
+    project['URLS'] = {
+        'URL-Status': make_project_url(project['name'])}
+    project['Name'] = project.pop('name')
+    project['CreatedBy'] = project.pop('created_by_user')
+    project['CreatedAt'] = fix_timestamp(project.pop('created_timestamp'))
+    project['LastJobAddedAt'] = fix_timestamp(
+        project.pop('last_added_timestamp'))
+    project['LastJobClaimedAt'] = fix_timestamp(
+        project.pop('last_claimed_timestamp'))
+    return project
+
+
 class ListProjects(BasicView):
     """View for listing projects"""
     def _get_view(self, version):
         """
         Should return a JSON object with a list of projects.
         """
-        return jsonify(Version=version)
+        db = self._get_projects_database()
+        projects = db.get_projects()
+        projects = [make_pretty_project(p) for p in projects]
+        return jsonify(Version=version, Projects=projects)
 
 
 def make_job_url(endpoint, project, job_id):
@@ -202,7 +224,7 @@ class ListJobs(BasicProjectView):
             except ValueError:
                 return abort(400, 'Bad time format: %r' % end)
 
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         if start or end:
             if not status:
                 return abort(400, ('Param @start and @end can only be used '
@@ -234,10 +256,14 @@ class ListJobs(BasicProjectView):
         """
         job = request.json
         job_id = job['id']
-        db = self._get_database(project)
-        if db.job_exists(job_id):
+        job_db = self._get_jobs_database(project)
+        if job_db.job_exists(job_id):
             return abort(409, 'Job already exists')
-        db.insert_job(job_id, job)
+        job_db.insert_job(job_id, job)
+        projects_db = self._get_projects_database()
+        if not projects_db.job_added(project):
+            projects_db.insert_project(project, g.user.username)
+            projects_db.job_added(project)
         return jsonify(Version=version, Project=project, ID=job_id), 201
 
 
@@ -269,7 +295,7 @@ class FetchNextJob(ListJobs):
           URI can be put in the object and included in the listing.
         * Easier to debug/get status if fetching can be done w/o auth.
         """
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
         try:
             job = next(db.get_jobs(match={'claimed': False},
                                    fields=['id', 'source_url', 'target_url']))

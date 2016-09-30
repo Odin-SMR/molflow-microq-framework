@@ -186,10 +186,13 @@ class TestMultipleProjects(BaseWithWorkerUser):
             self._insert_job(job)
         for job in jobs[:1]:
             self._insert_job(job, project='other')
+        r = requests.put(self._apiroot + "/v4/nojobs", auth=self._auth)
+        self.assertEqual(r.status_code, 201)
 
     def tearDown(self):
         self._delete_test_project()
         self._delete_test_project(project='other')
+        self._delete_test_project(project='nojobs')
 
     def test_multiple_projects(self):
         """Test that multiple projects work and are separated"""
@@ -200,6 +203,15 @@ class TestMultipleProjects(BaseWithWorkerUser):
         r = requests.get(self._apiroot + "/v4/other/jobs")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.json()["Jobs"]), 1)
+
+        r = requests.get(self._apiroot + "/v4/nojobs/jobs")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.json()["Jobs"]), 0)
+
+        r = requests.get(self._apiroot + "/v4/projects")
+        self.assertEqual(r.status_code, 200)
+        projects = r.json()['Projects']
+        self.assertEqual(len(projects), 3)
 
 
 class TestJobViews(BaseWithWorkerUser):

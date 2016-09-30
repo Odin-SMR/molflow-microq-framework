@@ -2,8 +2,7 @@ from datetime import datetime
 from operator import itemgetter
 
 from sqlalchemy import (
-    create_engine, and_, false, func, select, distinct as sqldistinct, inspect)
-from sqlalchemy.orm import scoped_session, sessionmaker
+    and_, false, func, select, distinct as sqldistinct, inspect)
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.declarative.base import _declarative_constructor
 from sqlalchemy import (
@@ -11,8 +10,7 @@ from sqlalchemy import (
 
 from utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
 from uservice.database.basedb import BaseJobDatabaseAPI, STATE_TO_TIMESTAMP
-
-engine = db_session = None
+from uservice.database.basesqldb import SqlDB
 
 MODELS = {}
 
@@ -64,20 +62,9 @@ def get_job_model(project):
 
 class SqlJobDatabase(BaseJobDatabaseAPI):
 
-    def __init__(self, project, dburl=None):
-        global engine, db_session
-        if not engine:
-            engine = create_engine(
-                dburl, convert_unicode=True, pool_size=30, pool_recycle=3600)
-            db_session = scoped_session(
-                sessionmaker(autocommit=True,
-                             autoflush=True,
-                             bind=engine))
-        self.engine = engine
-        self.db_session = db_session
-        self.model = get_job_model(project)
-        self.model.query = db_session.query_property()
-        self.model.__table__.create(db_session.bind, checkfirst=True)
+    def __init__(self, project):
+        self.db = SqlDB(get_job_model(project))
+        super(SqlJobDatabase, self).__init__(project)
 
     @staticmethod
     def _getattr_from_column_name(job, column_name):
@@ -87,7 +74,7 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
                 return getattr(job, attr)
 
     def _get_job(self, job_id, fields):
-        job = self.model.query.filter_by(id=job_id).first()
+        job = self.db.model.query.filter_by(id=job_id).first()
         if not job:
             return
         job_dict = {c.name: self._getattr_from_column_name(job, c.name)
@@ -102,37 +89,37 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
         expressions = []
         if match:
             for k, v in match.items():
-                expressions.append(self.model.__table__.c[k] == v)
+                expressions.append(self.db.model.__table__.c[k] == v)
         timestamp_col = None
         if time_field:
-            timestamp_col = getattr(self.model, time_field)
+            timestamp_col = getattr(self.db.model, time_field)
             if start_time:
                 expressions.append(timestamp_col >= start_time)
             if end_time:
                 expressions.append(timestamp_col < end_time)
         whereclause = and_(*expressions) if expressions else None
 
-        fields = [self.model.__table__.c[field] for field in fields]
+        fields = [self.db.model.__table__.c[field] for field in fields]
         query = select(fields, whereclause=whereclause, order_by=timestamp_col,
                        limit=limit)
-        for row in self.db_session.execute(query):
+        for row in self.db.session.execute(query):
             job_dict = dict(zip(row.keys(), row))
             yield job_dict
 
     def count_jobs(self, group_by='current_status'):
-        group_by = getattr(self.model, group_by)
+        group_by = getattr(self.db.model, group_by)
         query = select([func.count('*'), group_by], group_by=group_by)
-        return {row[1]: row[0] for row in self.db_session.execute(query)}
+        return {row[1]: row[0] for row in self.db.session.execute(query)}
 
     def count_jobs_per_time_period(self, job_state,
                                    time_period=TIME_PERIODS.hourly,
                                    count_field_name=None,
                                    distinct=False):
         """See parent docstring"""
-        ts = getattr(self.model, STATE_TO_TIMESTAMP[job_state])
+        ts = getattr(self.db.model, STATE_TO_TIMESTAMP[job_state])
         count = '*'
         if count_field_name:
-            count = getattr(self.model, count_field_name)
+            count = getattr(self.db.model, count_field_name)
         if distinct:
             count = sqldistinct(count)
 
@@ -150,7 +137,7 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
 
         query = select([func.count(count)] + group_by, group_by=group_by)
         counts = []
-        for row in self.db_session.execute(query):
+        for row in self.db.session.execute(query):
             if not row[1]:
                 # These jobs have not been in this job state.
                 continue
@@ -164,18 +151,18 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
         return counts
 
     def job_exists(self, job_id):
-        if self.model.query.filter_by(id=job_id).first():
+        if self.db.model.query.filter_by(id=job_id).first():
             return True
         return False
 
     def claim_job(self, job_id):
         """Claim a job, return True if the job was claimed"""
-        statement = self.model.__table__.update().where(
-            and_(self.model.id == job_id,
-                 self.model.claimed == false())).values(
+        statement = self.db.model.__table__.update().where(
+            and_(self.db.model.id == job_id,
+                 self.db.model.claimed == false())).values(
                      claimed=True)
-        result = self.db_session.execute(statement)
-        self.db_session.flush()
+        result = self.db.session.execute(statement)
+        self.db.session.flush()
         return bool(result.rowcount)
 
     def _update_job(self, job_id, data):
@@ -198,20 +185,20 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
         equivalent for the target dialect, upon connection. This setting is
         currently hardcoded.
         """
-        statement = self.model.__table__.update().where(
-            self.model.id == job_id).values(**data)
-        result = self.db_session.execute(statement)
-        self.db_session.flush()
+        statement = self.db.model.__table__.update().where(
+            self.db.model.id == job_id).values(**data)
+        result = self.db.session.execute(statement)
+        self.db.session.flush()
         return bool(result.rowcount)
 
     def _insert_job(self, job_id, job):
-        job = self.model(**job)
-        self.db_session.add(job)
-        self.db_session.flush()
+        job = self.db.model(**job)
+        self.db.session.add(job)
+        self.db.session.flush()
 
     def close(self):
-        self.db_session.remove()
+        self.db.session.remove()
 
     def drop(self):
-        self.model.__table__.drop(self.db_session.bind, checkfirst=True)
-        self.db_session.flush()
+        self.db.model.__table__.drop(self.db.session.bind, checkfirst=True)
+        self.db.session.flush()
