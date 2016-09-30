@@ -145,6 +145,7 @@ def make_pretty_project(project):
         project.pop('last_added_timestamp'))
     project['LastJobClaimedAt'] = fix_timestamp(
         project.pop('last_claimed_timestamp'))
+    project['Deadline'] = fix_timestamp(project.pop('deadline_timestamp'))
     return project
 
 
