@@ -3,7 +3,7 @@ from datetime import timedelta
 from collections import defaultdict
 from operator import itemgetter
 
-from flask import request, jsonify
+from flask import request, jsonify, g
 
 from utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
 from uservice.views.basic_views import BasicProjectView
@@ -16,7 +16,7 @@ class ProjectStatus(BasicProjectView):
         """Used to get project status"""
         period = request.args.get('period', TIME_PERIODS.hourly).upper()
 
-        db = self._get_database(project)
+        db = self._get_jobs_database(project)
 
         def add_state_count(job_state, counts):
             state_counts = db.count_jobs_per_time_period(
@@ -74,10 +74,16 @@ class ProjectStatus(BasicProjectView):
 
     def _put_view(self, version, project):
         """Used to create project"""
-        self._get_database(project)
-        return jsonify(Version=version, Project=project)
+        db = self._get_projects_database()
+        if db.project_exists(project):
+            return jsonify(Version=version, Project=project)
+        db.insert_project(project, g.user.username)
+        self._get_jobs_database(project)
+        return jsonify(Version=version, Project=project), 201
 
     def _delete_view(self, version, project):
         """Used to delete project"""
-        self._get_database(project).drop()
+        db = self._get_projects_database()
+        db.remove_project(project)
+        self._get_jobs_database(project).drop()
         return jsonify(Version=version, Project=project)
