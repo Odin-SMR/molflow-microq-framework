@@ -15,7 +15,6 @@ webapi:
     - USERVICE_ADMIN_PASSWORD=sqrrl
   volumes:
     - ./src/:/app
-    - ./data/:/var/lib/odindata
   links:
     - mysqlhost
 
@@ -43,7 +42,7 @@ uworker:
     - webapi
 
 mysqlhost:
-  image: docker2.molflow.com/devops/hermod_mysql
+  build: db
   environment:
     - MYSQL_ROOT_PASSWORD=empty
     - MYSQL_DATABASE=smr

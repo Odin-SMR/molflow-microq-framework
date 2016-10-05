@@ -173,6 +173,9 @@ class TestMultipleProjects(BaseWithWorkerUser):
 
     def setUp(self):
         self._delete_test_project()
+        r = requests.get(self._apiroot + "/v4/projects")
+        self.assertEqual(r.status_code, 200)
+        self.nr_orig_projects = len(r.json()['Projects'])
         self._delete_test_project(project='other')
         jobs = [
             {'id': '42', 'type': 'test_type',
@@ -211,7 +214,7 @@ class TestMultipleProjects(BaseWithWorkerUser):
         r = requests.get(self._apiroot + "/v4/projects")
         self.assertEqual(r.status_code, 200)
         projects = r.json()['Projects']
-        self.assertEqual(len(projects), 3)
+        self.assertEqual(len(projects) - self.nr_orig_projects, 3)
 
 
 class TestJobViews(BaseWithWorkerUser):
