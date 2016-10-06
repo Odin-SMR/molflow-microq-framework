@@ -1,1 +1,37 @@
-Server status!
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="jumbotron">
+         <h1> Hermod µService Portal</h1>
+    </div>
+
+    {% if data %}
+        {% if data|string() is equalto "False" %}
+            <i class="fa fa-tachometer"></i>
+        {% endif %}
+    {% endif %}
+<div class="container-fluid">
+    <div class="row">
+		<h3 id="overviewHeader"></h3>
+		<h4 id="overviewETA"></h4>
+        <div id="overviewPlot" style="width:800px;height:500px"</div>
+    </div>
+    <div class="row">
+        <div class="table-responsive">
+            <table id="jobTable" class="table table-striped">
+                <!-- empty table -->
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+    <script type="text/javascript">
+        // When the document is ready
+        $(document).ready(function () {
+            initOverview('QSMRVDS');
+        });
+    </script>
+{% endblock %}
