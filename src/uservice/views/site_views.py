@@ -1,5 +1,6 @@
 """ Views that render site pages
 """
+from os import environ
 from flask import render_template
 from flask.views import MethodView
 
@@ -21,10 +22,11 @@ class JobStatusHumanReadable(MethodView):
 
 
 class ServerStatusHumanReadable(MethodView):
-    """Get jobstatus as html"""
+    """Get server as html"""
     def get(self):
         """GET"""
-        return render_template('index.html')
+        return render_template(
+            'index.html', data=str("USERV_API_PRODUCTION" in environ))
 
 
 class ProjectStatusHumanReadable(MethodView):

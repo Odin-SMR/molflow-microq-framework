@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="footer, address, phone, icons" />
+    <meta name="referrer" content="no-referrer">
+    <title>Hermod µService</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/footer-distributed-with-address-and-phones.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='font-awesome-4.4.0/css/font-awesome.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-datepicker3.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fullcalendar.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/odin.css') }}">
+  </head>
+  <body>
+{% block layout %}
+    <div>
+      layout
+    </div>
+{% endblock %}
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap-datepicker.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.time.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.orderBars.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.resize.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.categories.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.pie.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.stack.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.flot.crosshair.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/moment.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/fullcalendar.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/overview.js') }}"></script>
+{% block script %}
+{% endblock %}
+  </body>
+</html>

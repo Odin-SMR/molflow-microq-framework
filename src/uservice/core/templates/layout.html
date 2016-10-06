@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block layout %}
+
+{% block navbar %}
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/">Hermod µService</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/#status">Server status</a></li>
+            <li><a href="/#contact">Contact</a></li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Databrowser<span class="caret"></span></a>
+              <ul class="dropdown-menu">
+                <li><a href="http://odin.rss.chalmers.se/level1">Level1</a></li>
+                <li><a href="http://odin.rss.chalmers.se/level2">Level2</a></li>
+                <li><a href="http://amazonite.rss.chalmers.se:8280/OdinSMR">Old Level2 (external link)</a></li>
+<!--
+                <li role="separator" class="divider"></li>
+                <li class="dropdown-header">Data management</li>
+                <li><a href="/dashboard">Dashboard</a></li> -->
+              </ul>
+            </li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+{% endblock %}
+
+{% block content %}
+       empty
+{% endblock %}
+
+{% block footer %}
+		<footer class="footer-distributed">
+
+			<div class="footer-left">
+				<p class="footer-company-about">
+					<span>About the Hermod µService</span>
+                    Hermod µService is a processing system developed by
+                    <a href="http://www.molfow.com">Molflow</a> for the
+                    <a href="http://odin.rss.chalmers.se">Odin/SMR project</a>.
+
+			</div>
+            <div class="footer-center">
+				<div>
+
+				</div>
+			</div>
+			<div class="footer-right">
+				<img src="{{ url_for('static', filename='images/molflow_logo_white.png') }}" class="img-responsive center-block"/>
+				<img src="{{ url_for('static', filename='images/Chalmers_white.png') }}" class="img-responsive center-block"/>
+				<!-- img src="{{ url_for('static', filename='images/Molflow_ESA.png') }}" class="img-responsive center-block"/-->
+				<!--img src="{{ url_for('static', filename='images/44_digital_logo_white_LOW.png') }}" class="img-responsive center-block"/-->
+			</div>
+		</footer>
+{% endblock %}
+
+{% endblock %}
