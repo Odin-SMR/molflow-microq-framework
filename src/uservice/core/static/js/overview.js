@@ -185,7 +185,7 @@ function initJobTable(url) {
                 "data": "URLS",
                 "title": "Console output",
                 "render": function ( data, type, full, meta ) {
-                  return '<a href="' + data["URL-Output"] + '">View output</a>';
+                  return '<a href="#" alt="' + data["URL-Output"] + '">View output</a>';
                 },
  				"defaultContent": "<i>N/A</i>",
             },
@@ -193,6 +193,22 @@ function initJobTable(url) {
         "paging":   false,
         "ordering": false,
         "info":     false,
+    });
+
+    $('#jobTable tbody').on('click', 'tr', function () {
+        var tr = $(this).closest('tr');
+        var row = table.row('tr');
+        var url = $(this).children().eq(8).find('a').attr("alt");
+        if (row.child.isShown()) {
+            row.child.hide();
+            tr.removeClass('shown');
+
+        } else {
+            $.getJSON(url, function (data) {
+                row.child(data.Output.replace(/\n/g, '<br>')).show();
+                tr.addClass('shown');
+            });
+        }
     });
 }
 
