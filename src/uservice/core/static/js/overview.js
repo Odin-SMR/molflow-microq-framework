@@ -197,7 +197,7 @@ function initJobTable(url) {
 
     $('#jobTable tbody').on('click', 'tr', function () {
         var tr = $(this).closest('tr');
-        var row = table.row('tr');
+        var row = table.row(tr);
         var url = $(this).children().eq(8).find('a').attr("alt");
         if (row.child.isShown()) {
             row.child.hide();
