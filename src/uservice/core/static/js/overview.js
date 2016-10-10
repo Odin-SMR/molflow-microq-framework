@@ -19,9 +19,9 @@ function initOverview(project) {
     }
 
     $.getJSON(
-        '/rest_api/v4/' + project + '?period=hourly',
+        '/rest_api/v4/' + project + '?period=daily',
         function(rawdata) {
-            $.each( rawdata.Status.HourlyCount, function (ind, val) {
+            $.each( rawdata.Status.DailyCount, function (ind, val) {
                 workers.push([moment(val.Period), val.ActiveWorkers]);
                 claimed.push([moment(val.Period), val.JobsClaimed]);
                 failed.push([moment(val.Period), val.JobsFailed]);
@@ -43,7 +43,7 @@ function initOverview(project) {
 				bars: {
 					show: true,
 					order: 4,
-					barWidth: 600000,
+					barWidth: 1440000,
 				},
 			};
 			claimed = {
@@ -53,7 +53,7 @@ function initOverview(project) {
 				bars: {
 					show: true,
 					order: 1,
-					barWidth: 600000,
+					barWidth: 1440000,
 				},
 			};
 			failed = {
@@ -63,7 +63,7 @@ function initOverview(project) {
 				bars: {
 					show: true,
 					order: 3,
-					barWidth: 600000,
+					barWidth: 1440000,
 				},
 			};
 			finished = {
@@ -73,7 +73,7 @@ function initOverview(project) {
 				bars: {
 					show: true,
 					order: 2,
-					barWidth: 600000,
+					barWidth: 1440000,
 				},
 			};
 
