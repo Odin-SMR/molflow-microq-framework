@@ -114,7 +114,9 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
     def count_jobs_per_time_period(self, job_state,
                                    time_period=TIME_PERIODS.hourly,
                                    count_field_name=None,
-                                   distinct=False):
+                                   distinct=False,
+                                   start_time=None,
+                                   end_time=None):
         """See parent docstring"""
         ts = getattr(self.db.model, STATE_TO_TIMESTAMP[job_state])
         count = '*'
@@ -135,7 +137,16 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
             if period == time_period:
                 break
 
-        query = select([func.count(count)] + group_by, group_by=group_by)
+        expressions = []
+        if start_time or end_time:
+            if start_time:
+                expressions.append(ts >= start_time)
+            if end_time:
+                expressions.append(ts < end_time)
+        whereclause = and_(*expressions) if expressions else None
+
+        query = select([func.count(count)] + group_by, whereclause=whereclause,
+                       group_by=group_by)
         counts = []
         for row in self.db.session.execute(query):
             if not row[1]:

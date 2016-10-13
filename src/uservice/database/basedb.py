@@ -125,7 +125,9 @@ class BaseJobDatabaseAPI(object):
     def count_jobs_per_time_period(self, job_state,
                                    time_period=TIME_PERIODS.hourly,
                                    count_field_name=None,
-                                   distinct=False):
+                                   distinct=False,
+                                   start_time=None,
+                                   end_time=None):
         """Count jobs per time period when they entered a certain job state.
 
         Args:
@@ -133,6 +135,8 @@ class BaseJobDatabaseAPI(object):
           time_period (str): One off `utils.defs.TIME_PERIODS`.
           count_field_name (str): Count this field.
           distinct (bool): If True, count nr of unique values of the field.
+          start_time (datetime): If provided, start count from this time.
+          end_time (datetime): If provided, end count at this time.
 
         Returns:
           counts ([dict]): List of dicts with keys:
