@@ -1,5 +1,9 @@
 """ Basic views for REST api
 """
+import urllib
+from collections import defaultdict
+from operator import itemgetter
+
 from dateutil.parser import parse as parse_datetime
 
 from flask import jsonify, abort as flask_abort, make_response, request, g
@@ -7,7 +11,7 @@ from flask.views import MethodView
 
 from utils.validate import validate_project_name
 from utils.logs import get_logger
-from utils.defs import JOB_STATES
+from utils.defs import JOB_STATES, TIME_PERIODS
 
 from uservice.core.users import auth
 from uservice.database.basedb import get_db as get_jobs_db
@@ -183,8 +187,9 @@ def make_pretty_job(job, project):
     job['Status'] = job.pop('current_status')
     job['Added'] = fix_timestamp(job.pop('added_timestamp'))
     job['Claimed'] = fix_timestamp(job.pop('claimed_timestamp'))
+    job['IsClaimed'] = job.pop('claimed')
     job['Failed'] = fix_timestamp(job.pop('failed_timestamp'))
-    job['finished'] = fix_timestamp(job.pop('finished_timestamp'))
+    job['Finished'] = fix_timestamp(job.pop('finished_timestamp'))
     job['Worker'] = job.pop('worker')
     return job
 
@@ -266,6 +271,78 @@ class ListJobs(BasicProjectView):
             projects_db.insert_project(project, g.user.username)
             projects_db.job_added(project)
         return jsonify(Version=version, Project=project, ID=job_id), 201
+
+
+class CountJobs(BasicProjectView):
+    def _get_view(self, version, project):
+        """Group and count jobs per time period."""
+        period = request.args.get('period', TIME_PERIODS.daily).upper()
+        start = request.args.get('start')
+        end = request.args.get('end')
+        if start:
+            try:
+                start = parse_datetime(start)
+            except ValueError:
+                return abort(400, 'Bad time format: %r' % start)
+        if end:
+            try:
+                end = parse_datetime(end)
+            except ValueError:
+                return abort(400, 'Bad time format: %r' % end)
+
+        db = self._get_jobs_database(project)
+
+        def add_state_count(job_state, counts):
+            state_counts = db.count_jobs_per_time_period(
+                job_state, time_period=period, start_time=start, end_time=end)
+            for state_count in state_counts:
+                count = counts[state_count['period']]
+                count['Period'] = state_count['period']
+                count['Jobs%s' % job_state.title()] = state_count['count']
+                param = [('status', job_state),
+                         ('start', state_count['start_time'].isoformat()),
+                         ('end', state_count['end_time'].isoformat())]
+                count['URLS']['URL-Jobs%s' % job_state.title()] = (
+                    '{}rest_api/v4/{}/jobs?{}'.format(
+                        request.url_root, project, urllib.urlencode(param)))
+                # TODO: Make this general for all time periods
+                if period == TIME_PERIODS.daily:
+                    param[0] = ('period', TIME_PERIODS.hourly)
+                    count['URLS']['URL-Zoom'] = (
+                        '{}rest_api/v4/{}/jobs/count?{}'.format(
+                            request.url_root, project,
+                            urllib.urlencode(param)))
+
+        def add_workers_count(counts):
+            worker_counts = db.count_jobs_per_time_period(
+                JOB_STATES.claimed, time_period=period, start_time=start,
+                end_time=end, count_field_name='current_status', distinct=True)
+            for worker_count in worker_counts:
+                count = counts[worker_count['period']]
+                count['Period'] = worker_count['period']
+                count['ActiveWorkers'] = worker_count['count']
+                param = [('start', worker_count['start_time'].isoformat()),
+                         ('end', worker_count['end_time'].isoformat())]
+                count['URLS']['URL-ActiveWorkers'] = (
+                    '{}rest_api/v4/{}/workers?{}'.format(
+                        request.url_root, project, urllib.urlencode(param)))
+
+        def get_default_count():
+            return {'Period': None, 'JobsClaimed': 0, 'JobsFailed': 0,
+                    'JobsFinished': 0, 'URLS': {}}
+
+        counts = defaultdict(get_default_count)
+        add_state_count(JOB_STATES.claimed, counts)
+        add_state_count(JOB_STATES.failed, counts)
+        add_state_count(JOB_STATES.finished, counts)
+        add_workers_count(counts)
+
+        counts = counts.values()
+        counts.sort(key=itemgetter('Period'))
+
+        return jsonify(Version=version, Project=project,
+                       PeriodType=period.title(), Start=fix_timestamp(start),
+                       End=fix_timestamp(end), Counts=counts)
 
 
 class FetchNextJob(ListJobs):

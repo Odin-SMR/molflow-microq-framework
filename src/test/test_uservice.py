@@ -4,6 +4,46 @@ import requests
 from test.testbase import BaseTest, BaseWithWorkerUser, BaseInsertedJobs
 
 
+class BaseJobsTest(BaseWithWorkerUser):
+
+    JOBS = [
+        {'id': '1',
+         'type': 'test',
+         'worker': 'worker1',
+         'added_timestamp': '2000-01-01 10:00',
+         'claimed_timestamp': '2000-01-01 10:00',
+         'finished_timestamp': '2000-01-01 10:00',
+         'current_status': 'FINISHED'
+         },
+        {'id': '2',
+         'type': 'test',
+         'worker': 'worker2',
+         'added_timestamp': '2000-01-01 10:00',
+         'claimed_timestamp': '2000-01-01 10:00',
+         'failed_timestamp': '2000-01-01 10:00',
+         'current_status': 'FAILED'
+         },
+        {'id': '3',
+         'type': 'test',
+         'worker': 'worker1',
+         'added_timestamp': '2000-01-01 10:00',
+         'claimed_timestamp': '2000-01-01 11:00',
+         'finished_timestamp': '2000-01-01 11:00',
+         'current_status': 'FINISHED'
+         },
+        {'id': '4',
+         'type': 'test',
+         'added_timestamp': '2000-01-01 10:00',
+         }
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super(BaseJobsTest, cls).setUpClass()
+        for job in cls.JOBS:
+            assert cls._insert_job(job) == 201
+
+
 class TestAdmin(BaseTest):
 
     def test_adding_user(self):
@@ -90,7 +130,7 @@ class TestFetchJob(BaseInsertedJobs):
         self.assertEqual(r.json()["Job"]["JobID"], '42')
 
 
-class TestListJobs(BaseWithWorkerUser):
+class TestListJobs(BaseJobsTest):
 
     JOBS = [
         {'id': '1', 'type': 'test_type',
@@ -117,12 +157,6 @@ class TestListJobs(BaseWithWorkerUser):
          'current_status': 'FAILED',
          'worker': 'worker2'},
     ]
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestListJobs, cls).setUpClass()
-        for job in cls.JOBS:
-            cls._insert_job(job)
 
     def test_bad_requests(self):
         """Test requests with bad parameters"""
@@ -316,101 +350,22 @@ class TestJobViews(BaseWithWorkerUser):
         self.assertEqual(r.status_code, 404)
 
 
-class TestProjectViews(BaseWithWorkerUser):
+class TestCountJobs(BaseJobsTest):
 
-    def test_project_status(self):
-        """Test get project status"""
+    def test_daily_count(self):
+        """Test daily count of jobs"""
         self.maxDiff = None
-        jobs = [
-            {'id': '1',
-             'type': 'test',
-             'worker': 'worker1',
-             'added_timestamp': '2000-01-01 10:00',
-             'claimed_timestamp': '2000-01-01 10:00',
-             'finished_timestamp': '2000-01-01 10:00',
-             'current_status': 'FINISHED'
-             },
-            {'id': '2',
-             'type': 'test',
-             'worker': 'worker2',
-             'added_timestamp': '2000-01-01 10:00',
-             'claimed_timestamp': '2000-01-01 10:00',
-             'failed_timestamp': '2000-01-01 10:00',
-             'current_status': 'FAILED'
-             },
-            {'id': '3',
-             'type': 'test',
-             'worker': 'worker1',
-             'added_timestamp': '2000-01-01 10:00',
-             'claimed_timestamp': '2000-01-01 11:00',
-             'finished_timestamp': '2000-01-01 11:00',
-             'current_status': 'FINISHED'
-             },
-            {'id': '4',
-             'type': 'test',
-             'added_timestamp': '2000-01-01 10:00',
-             }
-        ]
-        for job in jobs:
-            assert self._insert_job(job) == 201
-
-        # Test default period
-        r = requests.get(self._apiroot + "/v4/project")
+        r = requests.get(
+            self._apiroot + "/v4/project/jobs/count")
         self.assertEqual(r.status_code, 200)
-        expected = {
-            u'ETA': u'0:30:00',
-            u'JobStates': {u'AVAILABLE': 1, u'FAILED': 1, u'FINISHED': 2},
-            u'HourlyCount': [{
-                u'ActiveWorkers': 2,
-                u'JobsClaimed': 2,
-                u'JobsFailed': 1,
-                u'JobsFinished': 1,
-                u'Period': u'2000-01-01 10:00',
-                u'URLS': {
-                    u'URL-ActiveWorkers': (
-                        u'http://localhost:5000/rest_api/v4/project/workers?'
-                        u'start=2000-01-01T10%3A00%3A00&'
-                        u'end=2000-01-01T11%3A00%3A00'),
-                    u'URL-JobsClaimed': (
-                        u'http://localhost:5000/rest_api/v4/project/jobs?'
-                        u'status=CLAIMED&start=2000-01-01T10%3A00%3A00&'
-                        u'end=2000-01-01T11%3A00%3A00'),
-                    u'URL-JobsFailed': (
-                        u'http://localhost:5000/rest_api/v4/project/jobs?'
-                        u'status=FAILED&start=2000-01-01T10%3A00%3A00&'
-                        u'end=2000-01-01T11%3A00%3A00'),
-                    u'URL-JobsFinished': (
-                        u'http://localhost:5000/rest_api/v4/project/jobs?'
-                        u'status=FINISHED&start=2000-01-01T10%3A00%3A00&'
-                        u'end=2000-01-01T11%3A00%3A00')}},
-                {u'ActiveWorkers': 1,
-                 u'JobsClaimed': 1,
-                 u'JobsFailed': 0,
-                 u'JobsFinished': 1,
-                 u'Period': u'2000-01-01 11:00',
-                 u'URLS': {
-                     u'URL-ActiveWorkers': (
-                         u'http://localhost:5000/rest_api/v4/project/workers?'
-                         u'start=2000-01-01T11%3A00%3A00&'
-                         u'end=2000-01-01T12%3A00%3A00'),
-                     u'URL-JobsClaimed': (
-                         u'http://localhost:5000/rest_api/v4/project/jobs?'
-                         u'status=CLAIMED&start=2000-01-01T11%3A00%3A00&'
-                         u'end=2000-01-01T12%3A00%3A00'),
-                     u'URL-JobsFinished': (
-                         u'http://localhost:5000/rest_api/v4/project/jobs?'
-                         u'status=FINISHED&start=2000-01-01T11%3A00%3A00&'
-                         u'end=2000-01-01T12%3A00%3A00')}}],
-        }
-        self.assertEqual(r.json()['Status'], expected)
 
-        # Test daily period
-        r = requests.get(self._apiroot + "/v4/project?period=daily")
-        self.assertEqual(r.status_code, 200)
         expected = {
-            u'ETA': u'8:00:00',
-            u'JobStates': {u'AVAILABLE': 1, u'FAILED': 1, u'FINISHED': 2},
-            u'DailyCount': [{
+            u'Project': 'project',
+            u'Version': 'v4',
+            u'PeriodType': 'Daily',
+            u'Start': None,
+            u'End': None,
+            u'Counts': [{
                 u'ActiveWorkers': 2,
                 u'JobsClaimed': 3,
                 u'JobsFailed': 1,
@@ -432,6 +387,137 @@ class TestProjectViews(BaseWithWorkerUser):
                     u'URL-JobsFinished': (
                         u'http://localhost:5000/rest_api/v4/project/jobs?'
                         u'status=FINISHED&start=2000-01-01T00%3A00%3A00&'
-                        u'end=2000-01-02T00%3A00%3A00')}}],
+                        u'end=2000-01-02T00%3A00%3A00'),
+                    u'URL-Zoom': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs/'
+                         u'count?period=HOURLY&start=2000-01-01T00%3A00%3A00&'
+                         u'end=2000-01-02T00%3A00%3A00')}}],
         }
-        self.assertEqual(r.json()['Status'], expected)
+        self.assertEqual(r.json(), expected)
+
+    def test_hourly_count(self):
+        """Test hourly count of jobs"""
+        self.maxDiff = None
+        r = requests.get(
+            self._apiroot + "/v4/project/jobs/count?period=hourly")
+        self.assertEqual(r.status_code, 200)
+
+        expected = {
+            u'Project': 'project',
+            u'Version': 'v4',
+            u'PeriodType': 'Hourly',
+            u'Start': None,
+            u'End': None,
+            u'Counts': [
+                {u'ActiveWorkers': 2,
+                 u'JobsClaimed': 2,
+                 u'JobsFailed': 1,
+                 u'JobsFinished': 1,
+                 u'Period': u'2000-01-01 10:00',
+                 u'URLS': {
+                     u'URL-ActiveWorkers': (
+                         u'http://localhost:5000/rest_api/v4/project/workers?'
+                         u'start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00'),
+                     u'URL-JobsClaimed': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=CLAIMED&start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00'),
+                     u'URL-JobsFailed': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=FAILED&start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00'),
+                     u'URL-JobsFinished': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=FINISHED&start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00')}},
+                {u'ActiveWorkers': 1,
+                 u'JobsClaimed': 1,
+                 u'JobsFailed': 0,
+                 u'JobsFinished': 1,
+                 u'Period': u'2000-01-01 11:00',
+                 u'URLS': {
+                     u'URL-ActiveWorkers': (
+                         u'http://localhost:5000/rest_api/v4/project/workers?'
+                         u'start=2000-01-01T11%3A00%3A00&'
+                         u'end=2000-01-01T12%3A00%3A00'),
+                     u'URL-JobsClaimed': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=CLAIMED&start=2000-01-01T11%3A00%3A00&'
+                         u'end=2000-01-01T12%3A00%3A00'),
+                     u'URL-JobsFinished': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=FINISHED&start=2000-01-01T11%3A00%3A00&'
+                         u'end=2000-01-01T12%3A00%3A00')}}],
+        }
+        self.assertEqual(r.json(), expected)
+
+    def test_time_range_count(self):
+        """Test count between start and end time"""
+        self.maxDiff = None
+        param = [
+            ('period', 'hourly'),
+            ('start', '2000-01-01 10:00'),
+            ('end', '2000-01-01 11:00'),
+        ]
+        r = requests.get("{}/v4/project/jobs/count?{}".format(
+            self._apiroot, urllib.urlencode(param)))
+        self.assertEqual(r.status_code, 200)
+
+        expected = {
+            u'Project': 'project',
+            u'Version': 'v4',
+            u'PeriodType': 'Hourly',
+            u'Start': '2000-01-01T10:00:00',
+            u'End': '2000-01-01T11:00:00',
+            u'Counts': [
+                {u'ActiveWorkers': 2,
+                 u'JobsClaimed': 2,
+                 u'JobsFailed': 1,
+                 u'JobsFinished': 1,
+                 u'Period': u'2000-01-01 10:00',
+                 u'URLS': {
+                     u'URL-ActiveWorkers': (
+                         u'http://localhost:5000/rest_api/v4/project/workers?'
+                         u'start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00'),
+                     u'URL-JobsClaimed': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=CLAIMED&start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00'),
+                     u'URL-JobsFailed': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=FAILED&start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00'),
+                     u'URL-JobsFinished': (
+                         u'http://localhost:5000/rest_api/v4/project/jobs?'
+                         u'status=FINISHED&start=2000-01-01T10%3A00%3A00&'
+                         u'end=2000-01-01T11%3A00%3A00')}}]
+        }
+        self.assertEqual(r.json(), expected)
+
+
+class TestProjectViews(BaseJobsTest):
+
+    def test_project_status(self):
+        """Test get project status"""
+        self.maxDiff = None
+        r = requests.get(
+            self._apiroot + "/v4/project?now=2000-01-01T11%3A00%3A00")
+        self.assertEqual(r.status_code, 200)
+        expected = {
+            u'Version': 'v4',
+            u'Project': 'project',
+            u'ETA': u'0:30:00',
+            u'JobStates': {u'Available': 1, u'Failed': 1, u'Finished': 2},
+            u'URLS': {
+                u'URL-DailyCount': (
+                    u'http://localhost:5000/rest_api/v4/project/jobs/count?'
+                    u'period=daily'),
+                u'URL-Jobs': (
+                    u'http://localhost:5000/rest_api/v4/project/jobs'),
+                u'URL-Workers': (
+                    u'http://localhost:5000/rest_api/v4/project/workers'),
+            }
+        }
+        self.assertEqual(r.json(), expected)
