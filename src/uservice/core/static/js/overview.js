@@ -49,11 +49,11 @@ function initOverview(project) {
 	$('#overviewPlot').bind("plotclick", function (event, pos, item) {
 		if ((item) && item.series.label != 'workers') {
 		    // Update table:
-			updateJobTable(item.series.URLS[item.dataIndex]);
+			updateJobTable(item.series.URLS.own[item.dataIndex]);
 
             // Update plot:
 		    if ($('#overviewPlot').hasClass("Daily")) {
-		        var new_uri = item.series.URLS[item.dataIndex]['URL-Zoom'];
+		        var new_uri = item.series.URLS.zoom[item.dataIndex];
                 $('#overviewPlot').toggleClass("Daily");
                 updateOverviewPlot(new_uri);
             }
@@ -111,7 +111,7 @@ function updateOverviewPlot(uri) {
                 order: 1,
                 barWidth: barWidth[PeriodType],
             },
-            URLS: URLS.claimed,
+            URLS: {own: URLS.claimed, zoom: URLS.zoom},
             periods: xticks,
         };
         finished = {
@@ -123,7 +123,7 @@ function updateOverviewPlot(uri) {
                 order: 2,
                 barWidth: barWidth[PeriodType],
             },
-            URLS: URLS.finished,
+            URLS: {own: URLS.finished, zoom: URLS.zoom},
             periods: xticks,
         };
         failed = {
@@ -135,7 +135,7 @@ function updateOverviewPlot(uri) {
                 order: 3,
                 barWidth: barWidth[PeriodType],
             },
-            URLS: URLS.failed,
+            URLS: {own: URLS.failed, zoom: URLS.zoom},
             periods: xticks,
         };
         workers = {
@@ -147,7 +147,7 @@ function updateOverviewPlot(uri) {
                 order: 4,
                 barWidth: barWidth[PeriodType],
             },
-            URLS: URLS.workers,
+            URLS: {own: URLS.workers, zoom: URLS.zoom},
             periods: xticks,
         };
 
