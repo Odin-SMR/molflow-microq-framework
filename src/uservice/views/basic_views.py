@@ -181,9 +181,12 @@ def make_pretty_job(job, project):
     """Transform job to json serializable dict with good looking keys"""
     job['URLS'] = {
         'URL-Input': job.pop('source_url'),
-        'URL-Output': make_job_url('output', project, job['id'])}
+        'URL-Output': make_job_url('output', project, job['id']),
+        'URL-Result': job.pop('view_result_url'),
+        'URL-Image': job.pop('image_url')}
     job['Id'] = job.pop('id')
     job['Type'] = job.pop('type')
+    job['Environment'] = job.pop('environment')
     job['Status'] = job.pop('current_status')
     job['Added'] = fix_timestamp(job.pop('added_timestamp'))
     job['Claimed'] = fix_timestamp(job.pop('claimed_timestamp'))
@@ -349,6 +352,9 @@ class FetchNextJob(ListJobs):
     """View for fetching data needed by the worker for the next job
     in the queue.
     """
+
+    JOB_FIELDS = ['id', 'image_url', 'source_url', 'target_url', 'environment']
+
     def __init__(self):
         super(FetchNextJob, self).__init__()
 
@@ -376,7 +382,7 @@ class FetchNextJob(ListJobs):
         db = self._get_jobs_database(project)
         try:
             job = next(db.get_jobs(match={'claimed': False},
-                                   fields=['id', 'source_url', 'target_url']))
+                                   fields=self.JOB_FIELDS))
         except StopIteration:
             return abort(404, 'No unclaimed jobs available')
         job = self._make_worker_job(project, job)
@@ -386,21 +392,27 @@ class FetchNextJob(ListJobs):
         """Create dict that contains the data needed by the worker:
 
         {'JobID': str,
+         'Environment': {...},
          'URLS': {
-            'URL-source': str,
-            'URL-target': str,
-            'URL-claim': str,
-            'URL-status': str,
-            'URL-output': str,
+             'URL-image': str,
+             'URL-source': str,
+             'URL-target': str,
+             'URL-claim': str,
+             'URL-status': str,
+             'URL-output': str,
         }}
         """
-        job_id, source_url, target_url = (
-            job_data['id'], job_data['source_url'], job_data['target_url'])
+        job_id, image_url, source_url, target_url, env = (
+            job_data['id'], job_data['image_url'], job_data['source_url'],
+            job_data['target_url'], job_data['environment'])
 
         job = {
             'JobID': job_id,
-            'URLS': {'URL-source': source_url,
-                     'URL-target': target_url}}
+            'Environment': env,
+            'URLS': {
+                'URL-image': image_url,
+                'URL-source': source_url,
+                'URL-target': target_url}}
 
         for endpoint in ['claim', 'status', 'output']:
             job["URLS"]["URL-{}".format(endpoint)] = make_job_url(

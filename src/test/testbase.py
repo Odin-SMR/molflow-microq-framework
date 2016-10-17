@@ -38,7 +38,8 @@ class BaseTest(unittest.TestCase):
         jobs = [
             {'id': '42', 'type': 'test_type',
              'source_url': cls.TEST_URL,
-             'target_url': cls.TEST_URL}
+             'target_url': cls.TEST_URL,
+             'image_url': cls.TEST_URL}
         ]
         # TODO: Only inserting one job because authentication takes ~0.5 secs
         for job in jobs[:1]:
