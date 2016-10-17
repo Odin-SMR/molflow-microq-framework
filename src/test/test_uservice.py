@@ -128,14 +128,29 @@ class TestFetchJob(BaseInsertedJobs):
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["Job"]["JobID"], '42')
+        self.maxDiff = None
+        self.assertEqual(r.json()["Job"], {
+            u'JobID': u'42',
+            u'Environment': {},
+            u'URLS': {
+                u'URL-image': BaseTest.TEST_URL,
+                u'URL-source': BaseTest.TEST_URL,
+                u'URL-target': BaseTest.TEST_URL,
+                u'URL-claim': self._apiroot + u'/v4/project/jobs/42/claim',
+                u'URL-output': self._apiroot + u'/v4/project/jobs/42/output',
+                u'URL-status': self._apiroot + u'/v4/project/jobs/42/status'
+            }})
 
 
 class TestListJobs(BaseJobsTest):
 
     JOBS = [
         {'id': '1', 'type': 'test_type',
-         'source_url': BaseTest.TEST_URL,
-         'target_url': BaseTest.TEST_URL},
+         'source_url': BaseTest.TEST_URL + '/source',
+         'target_url': BaseTest.TEST_URL + '/target',
+         'view_result_url': BaseTest.TEST_URL + '/view_result',
+         'image_url': BaseTest.TEST_URL + '/image',
+         'environment': {'env1': 'e1', 'env2': 'e2'}},
         {'id': '2', 'type': 'test_type',
          'source_url': BaseTest.TEST_URL,
          'target_url': BaseTest.TEST_URL,
@@ -172,7 +187,31 @@ class TestListJobs(BaseJobsTest):
         """Test requesting list of jobs without parameters."""
         r = requests.get(self._apiroot + "/v4/project/jobs")
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.json()["Jobs"]), 4)
+        self.assertEqual(len(r.json()["Jobs"]), len(self.JOBS))
+
+    def test_job_contents(self):
+        r = requests.get(self._apiroot + "/v4/project/jobs?status=available")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.json()["Jobs"]), 1)
+        job = r.json()["Jobs"][0]
+        job.pop('Added')
+        self.maxDiff = None
+        self.assertEqual(job, {
+            'Id': '1',
+            'Type': 'test_type',
+            'Environment': {'env1': 'e1', 'env2': 'e2'},
+            'Status': 'AVAILABLE',
+            'Claimed': None,
+            'IsClaimed': False,
+            'Failed': None,
+            'Finished': None,
+            'Worker': None,
+            'URLS': {
+                'URL-Input': BaseTest.TEST_URL + '/source',
+                'URL-Output': (
+                    self._apiroot + '/v4/project/jobs/1/output'),
+                'URL-Result': BaseTest.TEST_URL + '/view_result',
+                'URL-Image': BaseTest.TEST_URL + '/image'}})
 
     def test_list_matching(self):
         """Test listing jobs that match provided parameters"""
