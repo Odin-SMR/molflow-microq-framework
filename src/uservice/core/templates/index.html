@@ -13,28 +13,20 @@
     {% endif %}
 <div class="container-fluid">
     <div class="row">
-		<h3 id="overviewHeader"></h3>
-		<h4 id="overviewETA"></h4>
+		<h3 id="statusHeaderHeader">Projects overview</h3>
+		<h4 id="statusNumber"></h4>
         <div id="instructionsPlot">
             <p>
-            To see a list of jobs for a particular period, click on the bar for
-            the job type and period of interest.  If you are in the daily
-            overview, this will also zoom into an hourly view for that day.  To
-            return to the daily view, click anywhere in the plot outside the
-            bars.
-            </p>
-            <p>
-            The table below the plot shows data for the different jobs.  It can
-            be searched and sorted, and is updated as described above.
-            Clicking on a row in the table will display the console output
-            (<i>StdOut/StdErr</i>) from the worker.
+                These are all the processing projects currently in the system.
+                The table can be sorted and searched, and more details about
+                the status of any particular project can be accessed by
+                clicking the corresponding <i>More...</i> link.
             </p>
         </div>
-        <div id="overviewPlot" style="max-width:1200px;min-width:283px;max-height:742px;min-height:458px"</div>
     </div>
     <div class="row">
         <div class="table-responsive">
-            <table id="jobTable" class="table table-striped">
+            <table id="projectsTable" class="table table-striped">
                 <!-- empty table -->
             </table>
         </div>
@@ -46,7 +38,7 @@
     <script type="text/javascript">
         // When the document is ready
         $(document).ready(function () {
-            initOverview('QSMRVDS');
+            initServerStatus();
         });
     </script>
 {% endblock %}

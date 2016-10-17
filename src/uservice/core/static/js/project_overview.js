@@ -1,6 +1,8 @@
 // Fuctions for showing and exploring processing status
 
-function initOverview(project) {
+
+// Initialise the project overview, both plot and table:
+function initProjectOverview(project) {
     var uri;
 
     if (project === '') {
@@ -15,7 +17,7 @@ function initOverview(project) {
 
 			// Initialise overview plot and job table:
 			uri = rawdata.URLS["URL-DailyCount"];
-			updateOverviewPlot(uri);
+			updateProjectOverviewPlot(uri);
 			initJobTable(rawdata.URLS["URL-Jobs"] + "?status=FAILED");
         }
     );
@@ -55,20 +57,21 @@ function initOverview(project) {
 		    if ($('#overviewPlot').hasClass("Daily")) {
 		        var new_uri = item.series.URLS.zoom[item.dataIndex];
                 $('#overviewPlot').toggleClass("Daily");
-                updateOverviewPlot(new_uri);
+                updateProjectOverviewPlot(new_uri);
             }
         } else {
             // Update plot:
 		    if ($('#overviewPlot').hasClass("Hourly")) {
                 $('#overviewPlot').toggleClass("Hourly");
-                updateOverviewPlot(uri);
+                updateProjectOverviewPlot(uri);
             }
         }
 	});
 }
 
 
-function updateOverviewPlot(uri) {
+// Update the plot showing the statisics for the project jobs:
+function updateProjectOverviewPlot(uri) {
     var workers = [];
     var claimed = [];
     var failed = [];
@@ -151,7 +154,7 @@ function updateOverviewPlot(uri) {
             periods: xticks,
         };
 
-        // Initialise overview plot:
+        // (re)initialise overview plot:
         $.plot($('#overviewPlot'), [claimed, finished, failed, workers], {
             xaxis: {
                 mode: "time",
@@ -169,6 +172,7 @@ function updateOverviewPlot(uri) {
 }
 
 
+// Initialise the table showing the status of the jobs:
 function initJobTable(url) {
     var table = $('#jobTable').DataTable({
         "ajax":{
@@ -249,6 +253,7 @@ function initJobTable(url) {
 }
 
 
+// Update the job info table:
 function updateJobTable(url) {
     var table;
     table = $('#jobTable').DataTable();
@@ -256,6 +261,7 @@ function updateJobTable(url) {
 }
 
 
+// Clear the job info table:
 function clearJobTable() {
     var table;
     table = $('#jobTable').DataTable();
@@ -285,4 +291,3 @@ function getLevel2URI(data) {
 
     return uri;
 }
-
