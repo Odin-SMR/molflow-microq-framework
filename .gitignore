@@ -4,3 +4,4 @@
 *.orig
 *.sqlite
 *.log
+deployment/uworker/variables.json
