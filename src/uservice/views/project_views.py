@@ -59,13 +59,23 @@ class ProjectStatus(BasicProjectView):
                        ETA=ETA, URLS=urls)
 
     def _put_view(self, version, project):
-        """Used to create project"""
+        """Used to create and update project"""
+        data = request.json or {}
+        if 'deadline' in data:
+            data['deadline'] = parse_datetime(
+                data.pop('deadline'))
         db = self._get_projects_database()
-        if db.project_exists(project):
-            return jsonify(Version=version, Project=project)
-        db.insert_project(project, g.user.username)
-        self._get_jobs_database(project)
-        return jsonify(Version=version, Project=project), 201
+        unallowed = set(data.keys()) - db.UPDATED_BY_USER
+        if unallowed:
+            return abort(
+                400, 'Cannot update these fields: %r' % list(unallowed))
+        if not db.project_exists(project):
+            db.insert_project(project, g.user.username, **data)
+            self._get_jobs_database(project)
+            return jsonify(Version=version, ID=project), 201
+        else:
+            db.update_project(project, **data)
+            return jsonify(Version=version, ID=project), 204
 
     def _delete_view(self, version, project):
         """Used to delete project"""

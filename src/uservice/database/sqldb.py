@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from operator import itemgetter
 
@@ -33,8 +32,6 @@ class JobBase(object):
     source_url = Column(String(512))
     target_url = Column(String(512))
     view_result_url = Column(String(512))
-    image_url = Column(String(512))
-    environment = Column(Text, default='{}')
 
     # Job status data
     added_timestamp = Column(DateTime(), default=datetime.utcnow, index=True)
@@ -70,9 +67,6 @@ def get_job_model(project):
 
 class SqlJobDatabase(BaseJobDatabaseAPI):
 
-    # These fields are stored as json strings in the database:
-    JSON_FIELDS = ['environment']
-
     def __init__(self, project):
         self.db = SqlDB(get_job_model(project))
         super(SqlJobDatabase, self).__init__(project)
@@ -92,7 +86,7 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
                     for c in job.__table__.columns}
         if fields:
             job_dict = {k: v for k, v in job_dict.items() if k in fields}
-        return self.decode_json(job_dict)
+        return job_dict
 
     def _get_jobs(self, fields, match=None, start_time=None, end_time=None,
                   time_field=None, limit=None):
@@ -114,7 +108,7 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
         query = select(fields, whereclause=whereclause, order_by=timestamp_col,
                        limit=limit)
         for row in self.db.session.execute(query):
-            job_dict = self.decode_json(dict(zip(row.keys(), row)))
+            job_dict = dict(zip(row.keys(), row))
             yield job_dict
 
     def count_jobs(self, group_by='current_status'):
@@ -214,7 +208,7 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
         return bool(result.rowcount)
 
     def _insert_job(self, job_id, job):
-        job = self.db.model(**self.encode_json(job))
+        job = self.db.model(**job)
         self.db.session.add(job)
         self.db.session.flush()
 
@@ -224,17 +218,3 @@ class SqlJobDatabase(BaseJobDatabaseAPI):
     def drop(self):
         self.db.model.__table__.drop(self.db.session.bind, checkfirst=True)
         self.db.session.flush()
-
-    @classmethod
-    def encode_json(cls, job_dict):
-        for field in cls.JSON_FIELDS:
-            if field in job_dict:
-                job_dict[field] = json.dumps(job_dict[field])
-        return job_dict
-
-    @classmethod
-    def decode_json(cls, job_dict):
-        for field in cls.JSON_FIELDS:
-            if field in job_dict:
-                job_dict[field] = json.loads(job_dict[field])
-        return job_dict
