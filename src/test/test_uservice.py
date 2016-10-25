@@ -127,13 +127,34 @@ class TestFetchJob(BaseInsertedJobs):
         r = requests.get(self._apiroot + "/v4/project/jobs/fetch",
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json()["Job"]["JobID"], '42')
         self.maxDiff = None
         self.assertEqual(r.json()["Job"], {
             u'JobID': u'42',
             u'Environment': {},
             u'URLS': {
-                u'URL-image': BaseTest.TEST_URL,
+                u'URL-image': None,
+                u'URL-source': BaseTest.TEST_URL,
+                u'URL-target': BaseTest.TEST_URL,
+                u'URL-claim': self._apiroot + u'/v4/project/jobs/42/claim',
+                u'URL-output': self._apiroot + u'/v4/project/jobs/42/output',
+                u'URL-status': self._apiroot + u'/v4/project/jobs/42/status'
+            }})
+
+        project_data = {'environment': {'v': 1},
+                        'processing_image_url': BaseTest.TEST_URL + '/image'}
+        r = requests.put(self._apiroot + '/v4/project',
+                         json=project_data, auth=self._auth)
+        self.assertEqual(r.status_code, 204)
+
+        r = requests.get(self._apiroot + "/v4/project/jobs/fetch",
+                         auth=self._auth)
+        self.assertEqual(r.status_code, 200)
+        self.maxDiff = None
+        self.assertEqual(r.json()["Job"], {
+            u'JobID': u'42',
+            u'Environment': {'v': 1},
+            u'URLS': {
+                u'URL-image': BaseTest.TEST_URL + '/image',
                 u'URL-source': BaseTest.TEST_URL,
                 u'URL-target': BaseTest.TEST_URL,
                 u'URL-claim': self._apiroot + u'/v4/project/jobs/42/claim',
@@ -148,9 +169,7 @@ class TestListJobs(BaseJobsTest):
         {'id': '1', 'type': 'test_type',
          'source_url': BaseTest.TEST_URL + '/source',
          'target_url': BaseTest.TEST_URL + '/target',
-         'view_result_url': BaseTest.TEST_URL + '/view_result',
-         'image_url': BaseTest.TEST_URL + '/image',
-         'environment': {'env1': 'e1', 'env2': 'e2'}},
+         'view_result_url': BaseTest.TEST_URL + '/view_result'},
         {'id': '2', 'type': 'test_type',
          'source_url': BaseTest.TEST_URL,
          'target_url': BaseTest.TEST_URL,
@@ -199,7 +218,6 @@ class TestListJobs(BaseJobsTest):
         self.assertEqual(job, {
             'Id': '1',
             'Type': 'test_type',
-            'Environment': {'env1': 'e1', 'env2': 'e2'},
             'Status': 'AVAILABLE',
             'Claimed': None,
             'IsClaimed': False,
@@ -210,8 +228,7 @@ class TestListJobs(BaseJobsTest):
                 'URL-Input': BaseTest.TEST_URL + '/source',
                 'URL-Output': (
                     self._apiroot + '/v4/project/jobs/1/output'),
-                'URL-Result': BaseTest.TEST_URL + '/view_result',
-                'URL-Image': BaseTest.TEST_URL + '/image'}})
+                'URL-Result': BaseTest.TEST_URL + '/view_result'}})
 
     def test_list_matching(self):
         """Test listing jobs that match provided parameters"""
@@ -288,6 +305,73 @@ class TestMultipleProjects(BaseWithWorkerUser):
         self.assertEqual(r.status_code, 200)
         projects = r.json()['Projects']
         self.assertEqual(len(projects) - self.nr_orig_projects, 3)
+
+
+class TestUpdateProject(BaseWithWorkerUser):
+
+    def setUp(self):
+        self._delete_test_project(project='myproject')
+
+    def tearDown(self):
+        self._delete_test_project(project='myproject')
+
+    def _get_my_project(self):
+        r = requests.get(self._apiroot + "/v4/projects")
+        self.assertEqual(r.status_code, 200)
+        for p in r.json()['Projects']:
+            if p['Id'] == 'myproject':
+                return p
+
+    def test_update_project(self):
+        """Test create and update project"""
+        self.maxDiff = None
+        r = requests.put(self._apiroot + "/v4/myproject", auth=self._auth,
+                         json={'name': 'My Project'})
+        self.assertEqual(r.status_code, 201)
+
+        p = self._get_my_project()
+        self.assertTrue(isinstance(p.pop('CreatedAt'), basestring))
+        self.assertEqual(p, {
+            u'Id': u'myproject',
+            u'Name': u'My Project',
+            u'Environment': {},
+            u'CreatedBy': self._username,
+            u'LastJobAddedAt': None,
+            u'LastJobClaimedAt': None,
+            u'Deadline': None,
+            u'URLS': {
+                u'URL-Status': self._apiroot + '/v4/myproject',
+                u'URL-Processing-image': None
+            }
+        })
+
+        r = requests.put(self._apiroot + "/v4/myproject", auth=self._auth,
+                         json={'name': 'Your Project',
+                               'deadline': '2001-01-01 10:00',
+                               'processing_image_url': self.TEST_URL,
+                               'environment': {'var': 10}})
+        self.assertEqual(r.status_code, 204)
+
+        p = self._get_my_project()
+        self.assertTrue(isinstance(p.pop('CreatedAt'), basestring))
+        self.assertEqual(p, {
+            u'Id': u'myproject',
+            u'Name': u'Your Project',
+            u'Environment': {'var': 10},
+            u'CreatedBy': self._username,
+            u'LastJobAddedAt': None,
+            u'LastJobClaimedAt': None,
+            u'Deadline': u'2001-01-01T10:00:00',
+            u'URLS': {
+                u'URL-Status': self._apiroot + '/v4/myproject',
+                u'URL-Processing-image': self.TEST_URL
+            }
+        })
+
+        # Not allowed to update some data
+        r = requests.put(self._apiroot + "/v4/myproject", auth=self._auth,
+                         json={'created_by_user': 'cannot_do_this'})
+        self.assertEqual(r.status_code, 400)
 
 
 class TestJobViews(BaseWithWorkerUser):
