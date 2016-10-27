@@ -1,6 +1,7 @@
 """ Basic views for REST api that require job id
 """
 from datetime import datetime
+from dateutil.parser import parse as parse_datetime
 
 from flask import jsonify, request, g
 
@@ -57,9 +58,23 @@ class JobStatus(BasicJobView):
         if not request.json or 'Status' not in request.json:
             return abort(400, 'Missing "Status" field in request data')
         status = request.json['Status']
-        data = {'current_status': status}
+        data = {'current_status': status,
+                'processing_time': request.json.get('ProcessingTime') or 0}
         if status in STATE_TO_TIMESTAMP:
-            data[STATE_TO_TIMESTAMP[status]] = datetime.utcnow()
+            now = request.args.get('now')
+            if now:
+                now = parse_datetime(now)
+            else:
+                now = datetime.utcnow()
+            data[STATE_TO_TIMESTAMP[status]] = now
+
+        if status == JOB_STATES.finished:
+            self._get_projects_database().job_finished(
+                project, data['processing_time'])
+        elif status == JOB_STATES.failed:
+            self._get_projects_database().job_failed(
+                project, data['processing_time'])
+
         db = self._get_jobs_database(project)
         if not db.job_exists(job_id):
             return abort(404)
@@ -123,7 +138,11 @@ class JobClaim(BasicJobView):
         if not db.claim_job(job_id):
             return abort(409, 'The job is already claimed')
 
-        now = datetime.utcnow()
+        now = request.args.get('now')
+        if now:
+            now = parse_datetime(now)
+        else:
+            now = datetime.utcnow()
         worker = request.json['Worker']
         db.update_job(job_id, current_status=JOB_STATES.claimed,
                       claimed_timestamp=now, worker=worker)

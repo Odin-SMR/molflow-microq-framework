@@ -1,6 +1,7 @@
 """ Basic views for REST api
 """
 import urllib
+from datetime import datetime
 from collections import defaultdict
 from operator import itemgetter
 
@@ -38,6 +39,9 @@ class BasicView(MethodView):
 
     def _get_projects_database(self):
         return get_projects_db()
+
+    def _get_jobs_database(self, project):
+        return get_jobs_db(project, SqlJobDatabase)
 
     def get(self, version):
         """GET"""
@@ -99,9 +103,6 @@ class BasicView(MethodView):
 class BasicProjectView(BasicView):
     """Base class for project views"""
 
-    def _get_jobs_database(self, project):
-        return get_jobs_db(project, SqlJobDatabase)
-
     def get(self, version, project):
         """GET"""
         self._check_version(version)
@@ -134,12 +135,66 @@ class BasicProjectView(BasicView):
             abort(404)
 
 
+class FetchJobBase(object):
+    """Base class that can fetch an unclaimed job and format it
+    for the workers.
+    """
+
+    JOB_FIELDS = ['id', 'source_url', 'target_url']
+    PROJECT_FIELDS = ['processing_image_url', 'environment']
+
+    def _get_unclaimed_job(self, version, project):
+        db_jobs = self._get_jobs_database(project)
+        try:
+            job = next(db_jobs.get_jobs(match={'claimed': False},
+                                        fields=self.JOB_FIELDS))
+        except StopIteration:
+            return abort(404, 'No unclaimed jobs available')
+        db_projects = self._get_projects_database()
+        project_data = db_projects.get_project(
+            project, fields=self.PROJECT_FIELDS)
+        job = self._make_worker_job(project, job, project_data)
+        return jsonify(Version=version, Project=project, Job=job)
+
+    def _make_worker_job(self, project, job_data, project_data):
+        """Create dict that contains the data needed by the worker:
+
+        {'JobID': str,
+         'Environment': {...},
+         'URLS': {
+             'URL-image': str,
+             'URL-source': str,
+             'URL-target': str,
+             'URL-claim': str,
+             'URL-status': str,
+             'URL-output': str,
+        }}
+        """
+        job_id, image_url, source_url, target_url, env = (
+            job_data['id'], project_data['processing_image_url'],
+            job_data['source_url'], job_data['target_url'],
+            project_data['environment'])
+        job = {
+            'JobID': job_id,
+            'Environment': env,
+            'URLS': {
+                'URL-image': image_url,
+                'URL-source': source_url,
+                'URL-target': target_url}}
+
+        for endpoint in ['claim', 'status', 'output']:
+            job["URLS"]["URL-{}".format(endpoint)] = make_job_url(
+                endpoint, project, job_id)
+        return job
+
+
 def make_project_url(project):
     return "{0}rest_api/v4/{1}".format(request.url_root, project)
 
 
-def make_pretty_project(project):
+def make_pretty_project(project, prio=None):
     """Transform project to json serializable dict with good looking keys"""
+    project['PrioScore'] = prio
     project['URLS'] = {
         'URL-Status': make_project_url(project['id']),
         'URL-Processing-image': project.pop('processing_image_url')}
@@ -150,8 +205,13 @@ def make_pretty_project(project):
     project['CreatedAt'] = fix_timestamp(project.pop('created_timestamp'))
     project['LastJobAddedAt'] = fix_timestamp(
         project.pop('last_added_timestamp'))
+    project['NrJobsAdded'] = project.pop('nr_added')
     project['LastJobClaimedAt'] = fix_timestamp(
         project.pop('last_claimed_timestamp'))
+    project['NrJobsClaimed'] = project.pop('nr_claimed')
+    project['NrJobsFinished'] = project.pop('nr_finished')
+    project['NrJobsFailed'] = project.pop('nr_failed')
+    project['TotalProcessingTime'] = project.pop('processing_time')
     project['Deadline'] = fix_timestamp(project.pop('deadline'))
     return project
 
@@ -162,10 +222,27 @@ class ListProjects(BasicView):
         """
         Should return a JSON object with a list of projects.
         """
+        only_active = bool(request.args.get('only_active'))
         db = self._get_projects_database()
-        projects = db.get_projects()
-        projects = [make_pretty_project(p) for p in projects]
+        projects = db.get_projects(only_active=only_active)
+        now = datetime.utcnow()
+        projects = [make_pretty_project(p, prio=db.calc_prio_score(p, now))
+                    for p in projects]
         return jsonify(Version=version, Projects=projects)
+
+
+class FetchJobPrio(BasicView, FetchJobBase):
+    """Fetch a job from a project chosen based on prio score"""
+
+    @auth.login_required
+    def get(self, version):
+        """GET"""
+        self._check_version(version)
+        return self._get_view(version)
+
+    def _get_view(self, version):
+        db = self._get_projects_database()
+        return self._get_unclaimed_job(version, db.get_prio_project())
 
 
 def make_job_url(endpoint, project, job_id):
@@ -265,10 +342,23 @@ class ListJobs(BasicProjectView):
         Used to add jobs to the database.
         """
         job = request.json
+        fields = set(job.keys())
+        missing_required = SqlJobDatabase.REQUIRED_FIELDS - fields
+        if missing_required:
+            return abort(
+                400, 'Missing required fields: {}'.format(missing_required))
+        unallowed = fields - SqlJobDatabase.SET_BY_USER
+        if unallowed:
+            return abort(
+                400, ('These fields does not exist or are for internal use: {}'
+                      ''.format(list(unallowed))))
         job_id = job['id']
         job_db = self._get_jobs_database(project)
         if job_db.job_exists(job_id):
             return abort(409, 'Job already exists')
+        now = request.args.get('now')
+        if now:
+            job['added_timestamp'] = parse_datetime(now)
         job_db.insert_job(job_id, job)
         projects_db = self._get_projects_database()
         if not projects_db.job_added(project):
@@ -349,16 +439,10 @@ class CountJobs(BasicProjectView):
                        End=fix_timestamp(end), Counts=counts)
 
 
-class FetchNextJob(ListJobs):
+class FetchNextJob(ListJobs, FetchJobBase):
     """View for fetching data needed by the worker for the next job
     in the queue.
     """
-
-    JOB_FIELDS = ['id', 'source_url', 'target_url']
-    PROJECT_FIELDS = ['processing_image_url', 'environment']
-
-    def __init__(self):
-        super(FetchNextJob, self).__init__()
 
     @auth.login_required
     def get(self, version, project):
@@ -381,45 +465,4 @@ class FetchNextJob(ListJobs):
           URI can be put in the object and included in the listing.
         * Easier to debug/get status if fetching can be done w/o auth.
         """
-        db_jobs = self._get_jobs_database(project)
-        try:
-            job = next(db_jobs.get_jobs(match={'claimed': False},
-                                        fields=self.JOB_FIELDS))
-        except StopIteration:
-            return abort(404, 'No unclaimed jobs available')
-        db_projects = self._get_projects_database()
-        project_data = db_projects.get_project(
-            project, fields=self.PROJECT_FIELDS)
-        job = self._make_worker_job(project, job, project_data)
-        return jsonify(Version=version, Job=job)
-
-    def _make_worker_job(self, project, job_data, project_data):
-        """Create dict that contains the data needed by the worker:
-
-        {'JobID': str,
-         'Environment': {...},
-         'URLS': {
-             'URL-image': str,
-             'URL-source': str,
-             'URL-target': str,
-             'URL-claim': str,
-             'URL-status': str,
-             'URL-output': str,
-        }}
-        """
-        job_id, image_url, source_url, target_url, env = (
-            job_data['id'], project_data['processing_image_url'],
-            job_data['source_url'], job_data['target_url'],
-            project_data['environment'])
-        job = {
-            'JobID': job_id,
-            'Environment': env,
-            'URLS': {
-                'URL-image': image_url,
-                'URL-source': source_url,
-                'URL-target': target_url}}
-
-        for endpoint in ['claim', 'status', 'output']:
-            job["URLS"]["URL-{}".format(endpoint)] = make_job_url(
-                endpoint, project, job_id)
-        return job
+        return self._get_unclaimed_job(version, project)

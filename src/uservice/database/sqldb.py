@@ -6,7 +6,7 @@ from sqlalchemy import (
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.declarative.base import _declarative_constructor
 from sqlalchemy import (
-    Column, TIMESTAMP as DateTime, String, Text, Boolean, Index)
+    Column, TIMESTAMP as DateTime, String, Text, Boolean, Float, Index)
 
 from utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
 from uservice.database.basedb import BaseJobDatabaseAPI, STATE_TO_TIMESTAMP
@@ -43,6 +43,7 @@ class JobBase(object):
     claimed_timestamp = Column(DateTime(), index=True)
     finished_timestamp = Column(DateTime(), index=True)
     failed_timestamp = Column(DateTime(), index=True)
+    processing_time = Column(Float)
 
     @declared_attr
     def __table_args__(cls):
@@ -50,7 +51,7 @@ class JobBase(object):
 
 
 def _job_constructor(self, **kwargs):
-    kwargs['job_type'] = kwargs.pop('type')
+    kwargs['job_type'] = kwargs.pop('type', None)
     _declarative_constructor(self, **kwargs)
 
 Base = declarative_base(cls=JobBase, constructor=_job_constructor)
