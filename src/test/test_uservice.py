@@ -1,4 +1,5 @@
 import urllib
+from datetime import datetime, timedelta
 
 import requests
 from test.testbase import BaseTest, BaseWithWorkerUser, BaseInsertedJobs
@@ -9,30 +10,37 @@ class BaseJobsTest(BaseWithWorkerUser):
     JOBS = [
         {'id': '1',
          'type': 'test',
+         'source_url': BaseTest.TEST_URL,
          'worker': 'worker1',
          'added_timestamp': '2000-01-01 10:00',
          'claimed_timestamp': '2000-01-01 10:00',
          'finished_timestamp': '2000-01-01 10:00',
-         'current_status': 'FINISHED'
+         'current_status': 'FINISHED',
+         'processing_time': 300
          },
         {'id': '2',
          'type': 'test',
+         'source_url': BaseTest.TEST_URL,
          'worker': 'worker2',
          'added_timestamp': '2000-01-01 10:00',
          'claimed_timestamp': '2000-01-01 10:00',
          'failed_timestamp': '2000-01-01 10:00',
-         'current_status': 'FAILED'
+         'current_status': 'FAILED',
+         'processing_time': 200
          },
         {'id': '3',
          'type': 'test',
+         'source_url': BaseTest.TEST_URL,
          'worker': 'worker1',
          'added_timestamp': '2000-01-01 10:00',
          'claimed_timestamp': '2000-01-01 11:00',
          'finished_timestamp': '2000-01-01 11:00',
-         'current_status': 'FINISHED'
+         'current_status': 'FINISHED',
+         'processing_time': 300
          },
         {'id': '4',
          'type': 'test',
+         'source_url': BaseTest.TEST_URL,
          'added_timestamp': '2000-01-01 10:00',
          }
     ]
@@ -40,8 +48,13 @@ class BaseJobsTest(BaseWithWorkerUser):
     @classmethod
     def setUpClass(cls):
         super(BaseJobsTest, cls).setUpClass()
-        for job in cls.JOBS:
-            assert cls._insert_job(job) == 201
+        try:
+            for job in cls.JOBS:
+                status_code = cls._insert_job(job)
+                assert status_code == 201, status_code
+        except Exception as e:
+            super(BaseJobsTest, cls).tearDownClass()
+            raise e
 
 
 class TestAdmin(BaseTest):
@@ -87,7 +100,14 @@ class TestAuthentication(BaseWithWorkerUser):
     @classmethod
     def setUpClass(cls):
         super(TestAuthentication, cls).setUpClass()
-        cls._insert_job({'id': '42', 'type': 'test_type'})
+        try:
+            status_code = cls._insert_job(
+                {'id': '42', 'type': 'test_type',
+                 'source_url': BaseTest.TEST_URL})
+            assert status_code == 201, status_code
+        except Exception as e:
+            super(TestAuthentication, cls).tearDownClass()
+            raise e
 
     def test_user_password_authentication(self):
         """Test authenticating by user and password"""
@@ -202,6 +222,17 @@ class TestListJobs(BaseJobsTest):
         r = requests.get(self._apiroot + "/v4/project/jobs?status=a")
         self.assertEqual(r.status_code, 400)
 
+    def test_bad_job_insert(self):
+        """Test requests with bad job fields"""
+        bad_jobs = [
+            # Missing input_url
+            {'id': '1'},
+            # Unsupported field
+            {'id': '1', 'input_url': BaseTest.TEST_URL, 'unknown': 's'}
+        ]
+        for job in bad_jobs:
+            self.assertEqual(self._insert_job(job), 400)
+
     def test_list_all(self):
         """Test requesting list of jobs without parameters."""
         r = requests.get(self._apiroot + "/v4/project/jobs")
@@ -209,6 +240,7 @@ class TestListJobs(BaseJobsTest):
         self.assertEqual(len(r.json()["Jobs"]), len(self.JOBS))
 
     def test_job_contents(self):
+        """Test that listed jobs have the correct contents"""
         r = requests.get(self._apiroot + "/v4/project/jobs?status=available")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.json()["Jobs"]), 1)
@@ -263,10 +295,16 @@ class TestMultipleProjects(BaseWithWorkerUser):
 
     def setUp(self):
         self._delete_test_project()
+        self._delete_test_project(project='other')
+        self._delete_test_project(project='nojobs')
+
         r = requests.get(self._apiroot + "/v4/projects")
         self.assertEqual(r.status_code, 200)
         self.nr_orig_projects = len(r.json()['Projects'])
-        self._delete_test_project(project='other')
+
+        r = requests.get(self._apiroot + "/v4/projects?only_active=1")
+        self.assertEqual(r.status_code, 200)
+        self.nr_orig_active_projects = len(r.json()['Projects'])
         jobs = [
             {'id': '42', 'type': 'test_type',
              'source_url': self.TEST_URL,
@@ -306,6 +344,98 @@ class TestMultipleProjects(BaseWithWorkerUser):
         projects = r.json()['Projects']
         self.assertEqual(len(projects) - self.nr_orig_projects, 3)
 
+        r = requests.get(self._apiroot + "/v4/projects?only_active=1")
+        self.assertEqual(r.status_code, 200)
+        projects = r.json()['Projects']
+        self.assertEqual(len(projects) - self.nr_orig_active_projects, 2)
+
+
+class TestProjectsPrio(BaseJobsTest):
+
+    def setUp(self):
+        self._delete_test_project(project='myproject')
+
+    def tearDown(self):
+        self._delete_test_project(project='myproject')
+
+    def _get_project(self, project='project'):
+        r = requests.get(self._apiroot + "/v4/projects")
+        self.assertEqual(r.status_code, 200)
+        for p in r.json()['Projects']:
+            if p['Id'] == project:
+                return p
+
+    def test_projects_prio_score(self):
+        """Test calculation of prio score"""
+        # Prio should be 1 when no deadline
+        r = requests.put(self._apiroot + "/v4/project", auth=self._auth,
+                         json={'deadline': None})
+        self.assertEqual(r.status_code, 204)
+
+        self.assertEqual(self._get_project()['PrioScore'], 1)
+
+        # Deadline passed
+        r = requests.put(self._apiroot + "/v4/project", auth=self._auth,
+                         json={'deadline': '2011-01-01 10:00'})
+        self.assertEqual(r.status_code, 204)
+
+        prio_deadline_passed = self._get_project()['PrioScore']
+        self.assertAlmostEqual(prio_deadline_passed, 800/3.)
+
+        # Future deadline
+        r = requests.put(
+            self._apiroot + "/v4/project", auth=self._auth,
+            json={'deadline': (
+                datetime.utcnow() + timedelta(seconds=100)).isoformat()})
+        self.assertEqual(r.status_code, 204)
+
+        prio_future_deadline = self._get_project()['PrioScore']
+        self.assertAlmostEqual(
+            prio_future_deadline, prio_deadline_passed/100, 1)
+
+        # Prio should be zero when no jobs are available
+        r = requests.put(self._apiroot + "/v4/myproject", auth=self._auth,
+                         json={'name': 'My Project',
+                               'deadline': '2011-01-01 10:00'})
+        self.assertEqual(r.status_code, 201)
+        prio_no_jobs = self._get_project('myproject')['PrioScore']
+        self.assertAlmostEqual(prio_no_jobs, 0)
+
+    def test_fetch_job_prio(self):
+        """Test fetch of job from any project weighted by prio score"""
+        # Project with one available job, but no processed jobs and deadline
+        # passed
+        status_code = self._insert_job(
+            {'id': '1', 'source_url': BaseTest.TEST_URL}, 'myproject')
+        self.assertEqual(status_code, 201)
+        r = requests.put(self._apiroot + "/v4/myproject", auth=self._auth,
+                         json={'deadline': '2011-01-01 10:00'})
+        self.assertEqual(r.status_code, 204)
+
+        r = requests.put(self._apiroot + "/v4/project", auth=self._auth,
+                         json={'deadline': '2011-01-01 10:00'})
+        self.assertEqual(r.status_code, 204)
+
+        # Prio scores
+        self.assertAlmostEqual(self._get_project()['PrioScore'], 800/3.)
+        self.assertAlmostEqual(
+            self._get_project('myproject')['PrioScore'], 3600)
+
+        project_count = {'project': 0, 'myproject': 0}
+
+        for _ in xrange(100):
+            r = requests.get(self._apiroot + "/v4/projects/jobs/fetch",
+                             auth=self._auth)
+            self.assertEqual(r.status_code, 200)
+            project_count[r.json()['Project']] += 1
+
+        # p_project = (800/3)/(800/3 + 3600) = 0.069
+        # Probability to get zero jobs from project:
+        # binom.pmf(0, 100, p_project) = 0.0008
+        self.assertGreater(project_count['project'], 0)
+        self.assertGreater(
+            project_count['myproject'], project_count['project'])
+
 
 class TestUpdateProject(BaseWithWorkerUser):
 
@@ -337,8 +467,14 @@ class TestUpdateProject(BaseWithWorkerUser):
             u'Environment': {},
             u'CreatedBy': self._username,
             u'LastJobAddedAt': None,
+            u'NrJobsAdded': 0,
             u'LastJobClaimedAt': None,
+            u'NrJobsClaimed': 0,
             u'Deadline': None,
+            u'NrJobsFinished': 0,
+            u'NrJobsFailed': 0,
+            u'TotalProcessingTime': 0.0,
+            u'PrioScore': 0.0,
             u'URLS': {
                 u'URL-Status': self._apiroot + '/v4/myproject',
                 u'URL-Processing-image': None
@@ -360,8 +496,14 @@ class TestUpdateProject(BaseWithWorkerUser):
             u'Environment': {'var': 10},
             u'CreatedBy': self._username,
             u'LastJobAddedAt': None,
+            u'NrJobsAdded': 0,
             u'LastJobClaimedAt': None,
+            u'NrJobsClaimed': 0,
             u'Deadline': u'2001-01-01T10:00:00',
+            u'NrJobsFinished': 0,
+            u'NrJobsFailed': 0,
+            u'TotalProcessingTime': 0.0,
+            u'PrioScore': 0.0,
             u'URLS': {
                 u'URL-Status': self._apiroot + '/v4/myproject',
                 u'URL-Processing-image': self.TEST_URL
@@ -629,9 +771,20 @@ class TestProjectViews(BaseJobsTest):
             self._apiroot + "/v4/project?now=2000-01-01T11%3A00%3A00")
         self.assertEqual(r.status_code, 200)
         expected = {
-            u'Version': 'v4',
-            u'Project': 'project',
+            u'Version': u'v4',
+            u'Project': u'project',
+            u'Name': u'project',
+            u'CreatedBy': u'worker1',
+            u'Id': u'project',
             u'ETA': u'0:30:00',
+            u'Environment': {},
+            u'NrJobsAdded': 4,
+            u'NrJobsClaimed': 3,
+            u'NrJobsFailed': 1,
+            u'NrJobsFinished': 2,
+            u'Deadline': None,
+            u'PrioScore': None,
+            u'TotalProcessingTime': 800,
             u'JobStates': {u'Available': 1, u'Failed': 1, u'Finished': 2},
             u'URLS': {
                 u'URL-DailyCount': (
@@ -643,4 +796,8 @@ class TestProjectViews(BaseJobsTest):
                     u'http://localhost:5000/rest_api/v4/project/workers'),
             }
         }
-        self.assertEqual(r.json(), expected)
+        data = r.json()
+        data.pop('LastJobAddedAt')
+        data.pop('LastJobClaimedAt')
+        data.pop('CreatedAt')
+        self.assertEqual(data, expected)

@@ -47,9 +47,43 @@ class BaseTest(unittest.TestCase):
 
     @classmethod
     def _insert_job(cls, job, project=None):
+        """Insert job and set status"""
+        job = job.copy()
+        id = job['id']
+        worker = job.pop('worker', cls._username)
+        processing_time = job.pop('processing_time', 0)
+        added = job.pop('added_timestamp', None)
+        claimed = job.pop('claimed_timestamp', None)
+        finished = job.pop('finished_timestamp', None)
+        failed = job.pop('failed_timestamp', None)
+        auth = (cls._token or cls._username, cls._password)
+        job.pop('claimed', None)
+        job.pop('current_status', None)
         r = requests.post(
-            cls._apiroot + '/v4/{}/jobs'.format(project or cls._project),
-            json=job, auth=(cls._token or cls._username, cls._password))
+            cls._apiroot + '/v4/{}/jobs{}'.format(
+                project or cls._project,
+                ('?now=' + added) if added else ''),
+            json=job, auth=auth)
+        if r.status_code != 201:
+            return r.status_code
+        if claimed:
+            data = {'Worker': worker}
+            r_ = requests.put(
+                cls._apiroot + '/v4/{}/jobs/{}/claim?now={}'.format(
+                    project or cls._project, id, claimed),
+                auth=auth, json=data)
+            assert r_.status_code == 200, r_.status_code
+        if finished or failed:
+            if finished:
+                status = {'Status': 'FINISHED'}
+            else:
+                status = {'Status': 'FAILED'}
+            status['ProcessingTime'] = processing_time
+            r_ = requests.put(
+                cls._apiroot + '/v4/{}/jobs/{}/status?now={}'.format(
+                    project or cls._project, id, finished or failed),
+                auth=auth, json=status)
+            assert r_.status_code == 200, r_.status_code
         return r.status_code
 
     @classmethod

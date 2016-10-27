@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 from uservice.core.users import get_user_db, auth
 from uservice.views.basic_views import (
-    ListProjects, ListJobs, CountJobs, FetchNextJob, BasicView)
+    ListProjects, ListJobs, CountJobs, FetchNextJob, BasicView, FetchJobPrio)
 from uservice.views.job_views import JobClaim, JobStatus, JobOutput
 from uservice.views.project_views import ProjectStatus
 from uservice.views.site_views import (JobStatusHumanReadable,
@@ -59,6 +59,12 @@ class JobServer(Flask):
             # GET list of projects
             '/rest_api/<version>/projects',
             view_func=ListProjects.as_view('listprojects'),
+            methods=["GET"]
+            )
+        self.add_url_rule(
+            # GET job from a project, select project based on prio score
+            '/rest_api/<version>/projects/jobs/fetch',
+            view_func=FetchJobPrio.as_view('fetchjobprio'),
             methods=["GET"]
             )
         self.add_url_rule(

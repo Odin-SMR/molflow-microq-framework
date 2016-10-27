@@ -46,6 +46,10 @@ class BaseJobDatabaseAPI(object):
         'failed_timestamp', 'finished_timestamp', 'worker_output']
     PUBLIC_LISTING_FIELDS = PUBLIC_FIELDS[:-1]
 
+    SET_BY_USER = set(
+        ['id', 'type', 'source_url', 'view_result_url', 'target_url'])
+    REQUIRED_FIELDS = set(['id', 'source_url'])
+
     def __init__(self, project):
         self.project = project
 
