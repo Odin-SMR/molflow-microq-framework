@@ -11,37 +11,36 @@ from werkzeug.wrappers import Request, Response
 from test.testbase import BaseWithWorkerUser, TEST_DATA_DIR
 
 from utils.defs import JOB_STATES
+from utils import logs
 from utils.docker_util import in_docker
+from utils import docker_util
 from uworker import uworker
 
+# TODO: Start a local registry while testing?
+TEST_IMAGE = 'alpine:3.4'  # ~5Mb
 
-class TestUWorker(BaseWithWorkerUser):
+
+class BaseUWorkerTest(BaseWithWorkerUser):
+    in_docker = None
+
+    @property
+    def env(self):
+        """Return dict with env variables that should be set"""
+        raise NotImplementedError
 
     def setUp(self):
-        self.env = {
-            'UWORKER_HOSTNAME': 'testhost',
-            'UWORKER_CONTAINER_NAME': 'testcontainer',
-            'UWORKER_JOB_CMD': 'echo test',
-            'UWORKER_JOB_TYPE': 'test',
-            'UWORKER_JOB_API_ROOT': self._apiroot,
-            'UWORKER_JOB_API_PROJECT': self._project,
-            'UWORKER_JOB_API_USERNAME': self._token,
-            'UWORKER_JOB_API_PASSWORD': "",
-            'UWORKER_EXTERNAL_API_USERNAME': 'test',
-            'UWORKER_EXTERNAL_API_PASSWORD': 'test',
-        }
         for k, v in self.env.items():
             os.environ[k] = v
         self._insert_test_jobs()
+        self.orig_in_docker = in_docker
+        docker_util.in_docker = lambda: self.in_docker
 
     def tearDown(self):
+        docker_util.in_docker = self.orig_in_docker
         self._delete_test_project()
 
-    def test_bad_config(self):
-        """Test missing environment variables"""
-        optional = ['UWORKER_JOB_API_USERNAME',
-                    'UWORKER_JOB_API_PASSWORD',
-                    'UWORKER_EXTERNAL_API_USERNAME',
+    def _test_bad_config(self):
+        optional = ['UWORKER_EXTERNAL_API_USERNAME',
                     'UWORKER_EXTERNAL_API_PASSWORD']
         for k in self.env:
             v = os.environ.pop(k)
@@ -63,6 +62,31 @@ class TestUWorker(BaseWithWorkerUser):
         self.assertEqual(w.job_count, expected_jobs_count)
         # TODO: Check that result and output from job were stored.
 
+
+class TestUWorkerInDocker(BaseUWorkerTest):
+    """Test worker that is running in a docker container"""
+
+    in_docker = True
+
+    @property
+    def env(self):
+        return {
+            'UWORKER_HOSTNAME': 'testhost',
+            'HOSTNAME': 'testcontainer',
+            'UWORKER_JOB_CMD': 'echo test',
+            'UWORKER_JOB_TYPE': 'test',
+            'UWORKER_JOB_API_ROOT': self._apiroot,
+            'UWORKER_JOB_API_PROJECT': self._project,
+            'UWORKER_JOB_API_USERNAME': self._token,
+            'UWORKER_JOB_API_PASSWORD': "",
+            'UWORKER_EXTERNAL_API_USERNAME': 'test',
+            'UWORKER_EXTERNAL_API_PASSWORD': 'test',
+        }
+
+    def test_bad_config(self):
+        """Test missing environment variables"""
+        self._test_bad_config()
+
     def test_run(self):
         """Test one worker run"""
         self._run_once(expected_jobs_count=1)
@@ -83,6 +107,131 @@ class TestUWorker(BaseWithWorkerUser):
     def test_main(self):
         """Test to provide an input url argument"""
         uworker.main(['https://example.com/test'])
+
+
+class TestUWorkerOnHost(BaseUWorkerTest):
+    """Test worker that is running on the host"""
+
+    in_docker = False
+
+    _test_jobs = [
+        {'id': '42', 'type': 'test_type',
+         'source_url': 'echo',
+         'target_url': BaseUWorkerTest.TEST_URL}
+    ]
+
+    @property
+    def env(self):
+        return {
+            'HOSTNAME': 'testcontainer',
+            'UWORKER_JOB_API_ROOT': self._apiroot,
+            'UWORKER_JOB_API_USERNAME': self._token,
+            'UWORKER_JOB_API_PASSWORD': "",
+            'UWORKER_EXTERNAL_API_USERNAME': 'test',
+            'UWORKER_EXTERNAL_API_PASSWORD': 'test',
+        }
+
+    def setUp(self):
+        super(TestUWorkerOnHost, self).setUp()
+        r = requests.put(
+            BaseWithWorkerUser._apiroot + '/v4/' + BaseWithWorkerUser._project,
+            auth=self._auth, json={'processing_image_url': TEST_IMAGE})
+        self.assertEqual(r.status_code, 204)
+
+    def test_bad_config(self):
+        """Test missing environment variables"""
+        self._test_bad_config()
+
+    def test_run(self):
+        """Test one worker run"""
+        self._run_once(expected_jobs_count=1)
+
+    def test_exit_code(self):
+        """Test job command that return failure"""
+        error_job = {
+            'id': '43', 'type': 'test_type',
+            'source_url': 'ls test_exit_code',
+            'target_url': BaseUWorkerTest.TEST_URL}
+        self.assertEqual(self._insert_job(error_job), 201)
+        self._run_once(expected_jobs_count=1)
+        self._run_once(expected_jobs_count=1)
+
+
+class BaseExecutorTest(unittest.TestCase):
+
+    @staticmethod
+    def callback(msg):
+        """Process stdout and stderr are sent to this function"""
+        print(repr(msg))
+        BaseExecutorTest.callback.last_message = msg
+
+    def setUp(self):
+        self.log = logs.get_logger('unittest', to_file=False, to_stdout=True)
+
+
+class TestCommandExecutor(BaseExecutorTest):
+
+    def test_execute_success(self):
+        """Test execution that succeeds"""
+        ce = uworker.CommandExecutor('Test', ['echo'], self.log)
+        return_code, _ = ce.execute(['test_execute_success'],
+                                    self.callback)
+        self.assertEqual(return_code, 0)
+        self.assertTrue('test_execute_success' in self.callback.last_message)
+
+    def test_execute_failure(self):
+        """Test execution that fails"""
+        ce = uworker.CommandExecutor('Test', ['rm'], self.log)
+        return_code, _ = ce.execute(['this.file.should.not.exist'],
+                                    self.callback)
+        self.assertEqual(return_code, 1)
+
+    def test_timeout(self):
+        """Test that process is killed if timeout"""
+        ce = uworker.CommandExecutor('Test', ['sleep'], self.log)
+        return_code, _ = ce.execute(['5'],
+                                    self.callback, timeout=1, kill_after=1)
+        self.assertNotEqual(return_code, 0)
+        self.assertTrue('Killed Test process' in self.callback.last_message)
+
+
+class TestDockerExecutor(BaseExecutorTest):
+
+    def test_image_pull(self):
+        """Test pull of docker image"""
+        de = uworker.DockerExecutor('Test', TEST_IMAGE, self.log)
+        if de.image_exists():
+            ce = uworker.CommandExecutor('Remove image', ['docker', 'rmi'],
+                                         self.log)
+            ce.execute([TEST_IMAGE], self.callback)
+        self.assertFalse(de.image_exists())
+        de.pull_image(self.callback)
+        self.assertTrue(de.image_exists())
+
+    def test_execute_success(self):
+        """Test execution that succeeds"""
+        de = uworker.DockerExecutor('Test', TEST_IMAGE, self.log)
+        return_code, _ = de.execute(['echo', 'test_execute_success'],
+                                    self.callback)
+        self.assertEqual(return_code, 0)
+        self.assertTrue('test_execute_success' in self.callback.last_message)
+
+    def test_environment_variables(self):
+        """Test provisioning of environment variables to container"""
+        de = uworker.DockerExecutor(
+            'Test', TEST_IMAGE, self.log,
+            environment={'TESTENV': 'test_environment_variables'})
+        return_code, _ = de.execute(['env'], self.callback)
+        self.assertEqual(return_code, 0)
+        self.assertTrue(
+            'test_environment_variables' in self.callback.last_message)
+
+    def test_execute_failure(self):
+        """Test execution that fails"""
+        de = uworker.DockerExecutor('Test', TEST_IMAGE, self.log)
+        return_code, _ = de.execute(['rm', 'this.file.should.not.exist'],
+                                    self.callback)
+        self.assertEqual(return_code, 1)
 
 
 @unittest.skipIf(not in_docker(),

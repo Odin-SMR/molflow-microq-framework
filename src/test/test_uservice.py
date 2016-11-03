@@ -784,7 +784,7 @@ class TestProjectViews(BaseJobsTest):
             u'NrJobsFinished': 2,
             u'Deadline': None,
             u'PrioScore': None,
-            u'TotalProcessingTime': 800,
+            u'TotalProcessingTime': 800.0,
             u'JobStates': {u'Available': 1, u'Failed': 1, u'Finished': 2},
             u'URLS': {
                 u'URL-DailyCount': (
@@ -794,6 +794,8 @@ class TestProjectViews(BaseJobsTest):
                     u'http://localhost:5000/rest_api/v4/project/jobs'),
                 u'URL-Workers': (
                     u'http://localhost:5000/rest_api/v4/project/workers'),
+                u'URL-Status': u'http://localhost:5000/rest_api/v4/project',
+                u'URL-Processing-image': None
             }
         }
         data = r.json()
