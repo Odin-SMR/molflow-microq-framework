@@ -17,6 +17,12 @@ class BaseTest(unittest.TestCase):
     _password = 'sqrrl'
     _token = None
 
+    _test_jobs = [
+        {'id': '42', 'type': 'test_type',
+         'source_url': TEST_URL,
+         'target_url': TEST_URL}
+    ]
+
     @classmethod
     def tearDownClass(cls):
         cls._delete_test_project()
@@ -35,13 +41,8 @@ class BaseTest(unittest.TestCase):
 
     @classmethod
     def _insert_test_jobs(cls, project=None):
-        jobs = [
-            {'id': '42', 'type': 'test_type',
-             'source_url': cls.TEST_URL,
-             'target_url': cls.TEST_URL}
-        ]
         # TODO: Only inserting one job because authentication takes ~0.5 secs
-        for job in jobs[:1]:
+        for job in cls._test_jobs[:1]:
             status_code = cls._insert_job(job, project=project)
             assert status_code == 201, status_code
 

@@ -22,3 +22,5 @@ sudo apt-get install -y -qq linux-image-extra-$(uname -r) linux-image-extra-virt
 # Install docker engine
 sudo apt-get install -y -qq docker-engine
 sudo systemctl enable docker
+
+sudo apt-get install -y -qq docker-compose

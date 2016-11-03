@@ -25,12 +25,16 @@ dashboard:
 The worker needs to know the job service root url and credentials.
 The job service users can be created by the job service admin user,
 see README.md in the root of this repository.
+The worker must also have access to a docker registry.
 
 Put these config variables in a file:
 
     export UWORKER_JOB_API_ROOT=http://example.com/uservice/api/root
     export UWORKER_JOB_API_USERNAME=<uservice username>
     export UWORKER_JOB_API_PASSWORD=<uservice password>
+    export UWORKER_REGISTRY_URL=https://example.com/docker/registry
+    export UWORKER_REGISTRY_USERNAME=<docker registry username>
+    export UWORKER_REGISTRY_PASSWORD=<docker registry password>
 
 ### Packer config
 
@@ -70,7 +74,7 @@ first trial.
 The saving of the image can take a long time, normal is 10-20 minutes,
 but somtetimes several hours.
 
-## Development
+## Development of packer build scripts
 
 Validate the packer template (`xenial.json`):
 
@@ -83,3 +87,47 @@ Test the provisioning scripts on a manually booted test instance:
 This makes it much faster to iterate during development. The provisioning
 scripts are directly run on the test instance instead of booting
 a new instance every time.
+
+## Development of uworker
+
+Build virtualbox image for running the worker in a vm on your machine:
+
+    ./build_uworker_image.sh local
+
+The build should result in an image file named `packer_virtualbox-iso_virtualbox.box`
+in the same directory as the build script. The image can be used with vagrant.
+
+### Install vagrant and virtualbox
+
+Install vagrant by downloading package from:
+
+    https://www.vagrantup.com/downloads.html
+
+Tested and working with vagrant version `1.8.6` and virtualbox version `5.0.24`.
+
+Install plugins:
+
+    vagrant plugin install vagrant-vbguest
+
+### Start vm and setup test environment
+
+Run these commands in the same directory as the build script:
+
+    vagrant box add packer_virtualbox-iso_virtualbox.box --name molflow/uworker-xenial
+    vagrant up
+
+Now you should have a virtualbox vm running with the src directory of this repo
+mounted at /app and the root of this repo mounted at /src in the vm.
+
+Jump into the vm and setup the test environment:
+
+    host$ vagrant ssh
+    vm$ cd /src/deployment/uworker
+    vm$ sudo su root
+    vm# ./setup_test_env.sh
+
+This will start a uservice docker container in the vm and a uworker that
+uses that uservice. The local code on your machine is used for both services.
+
+It is now possible to add projects and jobs to the local uservice that the
+local uworker will execute via docker images.

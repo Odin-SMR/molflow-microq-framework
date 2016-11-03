@@ -18,9 +18,12 @@ class UClientError(Exception):
 
 
 class UClient(object):
-    """API to the micro service"""
+    """API to the micro service
 
-    def __init__(self, apiroot, project, username=None, password=None,
+    The client is mostly adapted to suit the needs of uworker.
+    """
+
+    def __init__(self, apiroot, username=None, password=None,
                  credentials_file=None, verbose=False, retries=5,
                  time_between_retries=60):
         """
@@ -40,17 +43,18 @@ class UClient(object):
           time_between_retries (int): Number of seconds between the retry
             requests.
         """
-        if not validate_project_name(project):
-            raise UClientError('Unsupported project name')
         self.uri = apiroot.strip('/')
-        self.project = project
-        self.project_uri = self.uri + '/v4/{}'.format(project)
         self.verbose = verbose
         self.credentials = self._get_credentials(
             username, password, credentials_file)
         self.token = None
         self.retries = retries
         self.time_between_retries = time_between_retries
+
+    def get_project_uri(self, project):
+        if not validate_project_name(project):
+            raise UClientError('Unsupported project name')
+        return self.uri + '/v4/{}'.format(project)
 
     def renew_token(self):
         """
@@ -87,13 +91,16 @@ class UClient(object):
         else:
             return None
 
-    def get_job_list(self):
+    def get_job_list(self, project):
         """Request list of jobs from server."""
-        return self._call_api(self.project_uri + "/jobs")
+        return self._call_api(self.get_project_uri(project) + "/jobs")
 
-    def fetch_job(self, job_type=None):
+    def fetch_job(self, job_type=None, project=None):
         """Request an unprocessed job from server."""
-        url = self.project_uri + "/jobs/fetch"
+        if project:
+            url = self.get_project_uri(project) + "/jobs/fetch"
+        else:
+            url = self.uri + '/v4/projects/jobs/fetch'
         if job_type:
             url += '?{}'.format(urllib.urlencode({'type': job_type}))
         return self._call_api(url)
@@ -108,9 +115,11 @@ class UClient(object):
         return self._call_api(url, 'PUT', json={'Output': output},
                               headers={'Content-Type': "application/json"})
 
-    def update_status(self, url, status):
+    def update_status(self, url, status, processing_time=None):
         """Update status of job."""
-        return self._call_api(url, 'PUT', json={'Status': status},
+        data = {'Status': status,
+                'ProcessingTime': processing_time}
+        return self._call_api(url, 'PUT', json=data,
                               headers={'Content-Type': "application/json"})
 
     def _call_api(self, url, method='GET', renew_token=True, auth=None,
@@ -167,8 +176,8 @@ class Job(object):
         self.claimed = False
 
     @classmethod
-    def fetch(cls, job_type, api):
-        r = api.fetch_job(job_type)
+    def fetch(cls, api, job_type=None, project=None):
+        r = api.fetch_job(job_type=job_type, project=project)
         return cls(r.json(), api)
 
     @property
@@ -196,6 +205,16 @@ class Job(object):
         """External url to send results from job"""
         return self.data["Job"]["URLS"]["URL-target"]
 
+    @property
+    def url_image(self):
+        """Docker registry url to processing image"""
+        return self.data["Job"]["URLS"]["URL-image"]
+
+    @property
+    def environment(self):
+        """Environment variables for the job"""
+        return self.data["Job"]["Environment"]
+
     def claim(self, worker='anonymous'):
         if self.claimed:
             return
@@ -205,8 +224,9 @@ class Job(object):
         except UClientError:
             raise
 
-    def send_status(self, status):
-        self.api.update_status(self.url_status, status)
+    def send_status(self, status, processing_time=None):
+        self.api.update_status(
+            self.url_status, status, processing_time=processing_time)
 
     def send_output(self, output):
         self.api.update_output(self.url_output, output)

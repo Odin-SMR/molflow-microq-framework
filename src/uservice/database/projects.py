@@ -71,6 +71,8 @@ class ProjectsDB(object):
     def get_prio_project(self):
         """Randomly select a project based on their prio score"""
         projects = self.get_prio_scores()
+        if not projects:
+            return
 
         total = sum((score for _, score in projects))
         rand = random.uniform(0, total)

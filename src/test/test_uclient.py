@@ -9,11 +9,10 @@ class BaseTestUClient(BaseWithWorkerUser):
         self._credentials = {"username": self._token,
                              "password": ''}
 
-    def get_client(self, credentials=None, project=None):
+    def get_client(self, credentials=None):
         credentials = (credentials if credentials is not None
                        else self._credentials)
-        project = project if project is not None else self._project
-        return UClient(self._apiroot, project, verbose=True,
+        return UClient(self._apiroot, verbose=True,
                        time_between_retries=0.01, **credentials)
 
 
@@ -21,9 +20,10 @@ class TestErrors(BaseTestUClient):
 
     def test_bad_project_name(self):
         bad_names = ['', '1', 'test;']
+        client = self.get_client()
         for name in bad_names:
             with self.assertRaises(UClientError):
-                self.get_client(project=name)
+                client.get_project_uri(project=name)
 
     def test_api_exception(self):
         """Test api exception"""
@@ -51,7 +51,7 @@ class TestCredentials(BaseTestWithInsertedJob):
         with open(credentials_file, 'w') as out:
             out.write(json.dumps(self._credentials))
         api = self.get_client({'credentials_file': credentials_file})
-        job = Job.fetch('test_type', api)
+        job = Job.fetch(api, job_type='test_type')
         job.send_status('test')
 
     def test_bad_credentials(self):
@@ -60,10 +60,10 @@ class TestCredentials(BaseTestWithInsertedJob):
         credentials = {"username": "snoopy", "password": "ace"}
         api = self.get_client(credentials)
         with self.assertRaises(UClientError):
-            Job.fetch('test_type', api)
+            Job.fetch(api, job_type='test_type')
 
         try:
-            Job.fetch('test_type', api)
+            Job.fetch(api, job_type='test_type')
             raise AssertionError('Should have excepted!')
         except UClientError as e:
             self.assertEqual(e.status_code, 401)
@@ -71,7 +71,7 @@ class TestCredentials(BaseTestWithInsertedJob):
         # No credentials provided
         api = self.get_client({})
         with self.assertRaises(UClientError):
-            Job.fetch('test_type', api)
+            Job.fetch(api, job_type='test_type')
 
 
 class TestJob(BaseTestWithInsertedJob):
@@ -80,11 +80,14 @@ class TestJob(BaseTestWithInsertedJob):
         """Test fetch, claim and update status/output"""
         api = self.get_client()
 
-        r = api.get_job_list()
+        r = api.get_job_list(self._project)
         self.assertEqual(r.status_code, 200)
 
-        job = Job.fetch('test_type', api)
+        job = Job.fetch(api)
         self.assertFalse(job.claimed)
+        job = Job.fetch(api, project=self._project)
+        self.assertFalse(job.claimed)
+
         job.claim()
         self.assertTrue(job.claimed)
         job.claim()
@@ -94,6 +97,8 @@ class TestJob(BaseTestWithInsertedJob):
 
         self.assertEqual(job.url_source, self.TEST_URL)
         self.assertEqual(job.url_target, self.TEST_URL)
+        self.assertEqual(job.url_image, None)
+        self.assertEqual(job.environment, {})
 
         job.send_status("Got data")
 

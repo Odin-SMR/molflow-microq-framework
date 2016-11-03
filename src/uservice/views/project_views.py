@@ -23,8 +23,10 @@ class ProjectStatus(BasicProjectView):
         else:
             now = datetime.utcnow()
 
-        project_data = make_pretty_project(
-            self._get_projects_database().get_project(project))
+        project_data = self._get_projects_database().get_project(project)
+        if not project_data:
+            return abort(404)
+        project_data = make_pretty_project(project_data)
 
         jobs_db = self._get_jobs_database(project)
         status = {state.title(): count
@@ -52,7 +54,13 @@ class ProjectStatus(BasicProjectView):
                     TIME_PERIODS.hourly].total_seconds()*eta_periods
                 ETA = str(timedelta(seconds=int(eta_secs)))
 
-        urls = {
+        project_data.update({
+            'Version': version,
+            'Project': project_data['Id'],
+            'JobStates': status,
+            'ETA': ETA
+        })
+        project_data['URLS'].update({
             'URL-DailyCount': (
                 '{}rest_api/v4/{}/jobs/count?period=daily').format(
                     request.url_root, project),
@@ -60,13 +68,6 @@ class ProjectStatus(BasicProjectView):
                 request.url_root, project),
             'URL-Workers': '{}rest_api/v4/{}/workers'.format(
                 request.url_root, project)
-        }
-        project_data.update({
-            'URLS': urls,
-            'Version': version,
-            'Project': project_data['Id'],
-            'JobStates': status,
-            'ETA': ETA
         })
         return jsonify(project_data)
 

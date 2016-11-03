@@ -242,7 +242,10 @@ class FetchJobPrio(BasicView, FetchJobBase):
 
     def _get_view(self, version):
         db = self._get_projects_database()
-        return self._get_unclaimed_job(version, db.get_prio_project())
+        project = db.get_prio_project()
+        if not project:
+            return abort(404, 'No unclaimed jobs available')
+        return self._get_unclaimed_job(version, project)
 
 
 def make_job_url(endpoint, project, job_id):
@@ -277,7 +280,6 @@ def make_pretty_job(job, project):
 
 class ListJobs(BasicProjectView):
     """View for listing jobs as JSON object"""
-    _translate_backend = {'B': 'AC1', 'C': 'AC2', 'AC1': 'AC1', 'AC2': 'AC2'}
 
     def _get_view(self, version, project):
         """

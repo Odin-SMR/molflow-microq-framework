@@ -16,33 +16,50 @@ from io import BytesIO
 from time import sleep, time
 from datetime import datetime
 from threading import Thread, Lock
-from numbers import Real
 
 from uclient.uclient import UClient, UClientError, Job
-from utils import debug_util
+from utils import docker_util
 from utils.logs import get_logger
 from utils.defs import JOB_STATES
 
+GENERAL_CONFIG = {
+    'api_root': ('UWORKER_JOB_API_ROOT', True),
+    'api_username': ('UWORKER_JOB_API_USERNAME', True),
+    'api_password': ('UWORKER_JOB_API_PASSWORD', True),
+    'external_username': ('UWORKER_EXTERNAL_API_USERNAME', False),
+    'external_password': ('UWORKER_EXTERNAL_API_PASSWORD', False)
+}
 
-def get_config():
+IN_DOCKER_CONFIG = {
+    'container_id': ('HOSTNAME', True),
+    # Set by start script
+    'hostname': ('UWORKER_HOSTNAME', True),
+    # Set by Dockerfile
+    'job_command': ('UWORKER_JOB_CMD', True),
+    'job_type': ('UWORKER_JOB_TYPE', True),
+    'job_timeout': ('UWORKER_JOB_TIMEOUT', False),
+    'api_project': ('UWORKER_JOB_API_PROJECT', True),
+}
+
+ON_HOST_CONFIG = {
+    'hostname': ('HOSTNAME', True)
+}
+
+
+def get_config(in_docker):
     """Create config dict from environment variables"""
-    return {
-        # Set by start script
-        'hostname': os.environ['UWORKER_HOSTNAME'],
-        'container_name': os.environ['UWORKER_CONTAINER_NAME'],
-        # Set by Dockerfile, should always exist.
-        'job_command': os.environ['UWORKER_JOB_CMD'],
-        'job_type': os.environ['UWORKER_JOB_TYPE'],
-        'job_timeout': os.environ.get('UWORKER_JOB_TIMEOUT'),
-        # Default can be set by Dockerfile, can be overrided by user
-        'api_root': os.environ['UWORKER_JOB_API_ROOT'],
-        # Set by user
-        'api_project': os.environ['UWORKER_JOB_API_PROJECT'],
-        'api_username': os.environ.get('UWORKER_JOB_API_USERNAME'),
-        'api_password': os.environ.get('UWORKER_JOB_API_PASSWORD'),
-        'external_username': os.environ.get('UWORKER_EXTERNAL_API_USERNAME'),
-        'external_password': os.environ.get('UWORKER_EXTERNAL_API_PASSWORD'),
-    }
+    conf = GENERAL_CONFIG.copy()
+    if in_docker:
+        conf.update(IN_DOCKER_CONFIG)
+    else:
+        conf.update(ON_HOST_CONFIG)
+    loaded_conf = {}
+    for key, (env, required) in conf.items():
+        if required:
+            loaded_conf[key] = os.environ[env]
+        else:
+            loaded_conf[key] = os.environ.get(env)
+    return loaded_conf
 
 
 class UWorkerError(Exception):
@@ -79,28 +96,33 @@ class UWorker(object):
     # Sleep this many seconds when no jobs are available
     IDLE_SLEEP = 1
     # Sleep this many seconds if something unexpected goes wrong
-    ERROR_SLEEP = 60
+    ERROR_SLEEP = 10
 
     def __init__(self, start_service=False):
+        self.in_docker = docker_util.in_docker()
         try:
-            config = get_config()
+            config = get_config(self.in_docker)
         except KeyError as e:
             raise UWorkerError('Missing config value: %s' % e)
-        self.name = '{class_name}_{host}_{container}'.format(
+        self.name = '{class_name}_{host}'.format(
             class_name=self.__class__.__name__,
-            host=config['hostname'],
-            container=config['container_name'])
+            host=config['hostname'])
         self.log = get_logger(self.name, to_file=start_service,
                               to_stdout=not start_service)
         self.job_count = 0
         self.log_config(config)
-        self.cmd = config['job_command']
-        self.job_type = config['job_type']
-        self.job_timeout = config['job_timeout']
-        if self.job_timeout:
-            self.job_timeout = int(self.job_timeout)
-        self.executor = CommandExecutor(self.cmd, self.log)
-        self.api = UClient(config['api_root'], config['api_project'],
+        self.project = self.job_type = self.job_timeout = self.cmd = None
+
+        if self.in_docker:
+            self.name += '_' + config['container_id']
+            self.project = config['api_project']
+            self.cmd = config['job_command']
+            self.job_type = config['job_type']
+            self.job_timeout = config['job_timeout']
+            if self.job_timeout:
+                self.job_timeout = int(self.job_timeout)
+
+        self.api = UClient(config['api_root'],
                            username=config['api_username'],
                            password=config['api_password'],
                            time_between_retries=self.ERROR_SLEEP)
@@ -110,8 +132,6 @@ class UWorker(object):
             self.alive = True
             signal.signal(signal.SIGINT, self.stop)
             signal.signal(signal.SIGTERM, self.stop)
-            self.log_stacks_thread = Thread(target=self._log_stack_trace)
-            self.log_stacks_thread.start()
             self.run()
 
     def log_config(self, config):
@@ -125,17 +145,19 @@ class UWorker(object):
             if only_once:
                 self.alive = False
             try:
-                job = Job.fetch(self.job_type, self.api)
+                job = Job.fetch(
+                    self.api, job_type=self.job_type, project=self.project)
                 if not job:
                     sleep(self.IDLE_SLEEP)
                 elif self.claim_job(job):
                     job.send_status(JOB_STATES.started)
-                    exit_code = self.do_job(
-                        job.url_source, job.url_target, job.url_output)
+                    exit_code, processing_time = self.do_job(
+                        job.url_source, job.url_target, job.url_output,
+                        job.url_image, job.environment)
                     if exit_code == 0:
-                        job.send_status(JOB_STATES.finished)
+                        job.send_status(JOB_STATES.finished, processing_time)
                     else:
-                        job.send_status(JOB_STATES.failed)
+                        job.send_status(JOB_STATES.failed, processing_time)
                     self.job_count += 1
             except Exception as e:
                 self.log.exception('Unhandled exception: %s' % e)
@@ -158,7 +180,8 @@ class UWorker(object):
                 sleep(self.ERROR_SLEEP)
         return False
 
-    def do_job(self, url_source, url_target=None, url_output=None):
+    def do_job(self, url_source, url_target=None, url_output=None,
+               url_image=None, environment=None):
         args = [url_source]
         if url_target:
             args.append(url_target)
@@ -175,18 +198,17 @@ class UWorker(object):
 
         self.log.info('Starting job: %s' % args)
         # TODO: Add support for letting a job override the configured timeout
-        exit_code = self.executor.execute(
-            args, output_callback, timeout=self.job_timeout)
-        return exit_code
+        if url_image:
+            assert not self.in_docker
+            executor = DockerExecutor(
+                'Job', url_image, self.log, environment=environment)
+        else:
+            assert self.in_docker
+            executor = CommandExecutor('Job', self.cmd, self.log)
 
-    def _log_stack_trace(self, log_interval=60):
-        last_log = time()
-        while self.alive:
-            sleep(1)
-            if time() - last_log > log_interval:
-                for stack in debug_util.get_current_stacks():
-                    self.log.info('Stacktrace snapshot:\n %s' % stack)
-                last_log = time()
+        exit_code, processing_time = executor.execute(
+            args, output_callback, timeout=self.job_timeout)
+        return exit_code, processing_time
 
 
 class ExecutorError(Exception):
@@ -194,55 +216,76 @@ class ExecutorError(Exception):
 
 
 class CommandExecutor(object):
-    def __init__(self, cmd, log):
-        self.cmd = cmd.split()
+    """Class for execution of commands.
+
+    Example usage:
+
+    >>> def callback_function(message):
+    >>>     print(message)
+    >>> c = CommandExecutor('Pack dir', 'tar -zcvf', log)
+    >>> c.execute(['packed.tar.gz', '/pack/this/dir'], callback_function)
+    """
+    def __init__(self, name, cmd, log):
+        if isinstance(cmd, basestring):
+            cmd = cmd.split()
+        self.cmd = cmd
+        self.process_name = name
         self.log = log
         self.output_lock = Lock()
 
-    def execute(self, command_args, output_callback, timeout=None):
+    def execute(self, command_args, output_callback, timeout=None,
+                kill_after=5):
         """
         Execute the command with args and monitor the progress.
 
         Args:
           commandd_args (list): List of arguments to provide to the command.
-          output_callback (function): Call this function with output from
-            the command as argument.
+          output_callback (function): Call this function with stdout/stderr
+            output from the command as argument.
           timeout (int): Send TERM to the command if it has not finished
-            after this many seconds. Also send KILL (9) if it still is
-            alive 5 seconds after TERM was sent.
+            after this many seconds.
+          kill_after (int): Also send KILL (9) if it still is
+            alive this many seconds after TERM was sent.
         """
         cmd = self.cmd + command_args
         if timeout:
-            if not isinstance(timeout, Real) or timeout <= 0:
+            if not isinstance(timeout, int) or timeout <= 0:
                 raise ExecutorError(
-                    'timeout must be a positive number, timeout=%r' % timeout)
-            cmd = ['timeout', '--kill-after=5', str(int(timeout))] + cmd
+                    'timeout must be a positive integer, timeout=%r' % timeout)
+            cmd = ['timeout', '--kill-after=%d' % kill_after,
+                   str(int(timeout))] + cmd
+        start_time = time()
         popen = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             universal_newlines=True)
-        self.log.info('Job process started with pid %s: %s' % (
-            popen.pid, cmd))
+        self.log.info('{} process started with pid {}: {}'.format(
+            self.process_name, popen.pid, cmd))
 
         output = BytesIO()
         self._handle_output(popen, output, output_callback)
         exit_code, killed = self._wait_for_exit(popen)
+        processing_time = time() - start_time
 
-        if killed:
-            msg = ('Killed job process after timeout of {} seconds'
-                   '').format(timeout)
+        if timeout and killed:
+            msg = ('Killed {} process after timeout of {} seconds'
+                   '').format(self.process_name, timeout)
             self._write_output('executor', msg + '\n', output)
             self.log.warning(msg)
 
-        msg = 'Job process exited with code {}'.format(exit_code)
+        msg = '{} process exited with code {}'.format(
+            self.process_name, exit_code)
         self._write_output('executor', msg + '\n', output)
         output_callback(output.getvalue())
         if exit_code != 0:
             self.log.warning(msg)
         else:
             self.log.info(msg)
-        return exit_code
+        return exit_code, processing_time
 
     def _handle_output(self, popen, out_buffer, out_callback):
+        """Start threads that feed the stdout/stderr streams from the
+        subprocess to the callback function.
+        """
         stdout_lines = iter(popen.stdout.readline, "")
         stderr_lines = iter(popen.stderr.readline, "")
 
@@ -254,19 +297,30 @@ class CommandExecutor(object):
         t_stderr.start()
         return t_stdout, t_stderr
 
-    def _read_lines(self, what, lines, out_buffer, out_callback):
+    def _read_lines(self, stream_name, lines, out_buffer, out_callback):
+        """Read stream from subprocess and feed to log and callback function"""
         last_callback = 0
         callback_interval = 5
         for line in lines:
             with self.output_lock:
-                self._write_output(what, line, out_buffer)
+                self._write_output(stream_name, line, out_buffer)
                 if time() - last_callback > callback_interval:
                     out_callback(out_buffer.getvalue())
                     last_callback = time()
             if line.strip():
-                self.log.info('Job process %s: %s' % (what, line))
+                self.log.info(
+                    '{process_name} process {stream}: {message}'.format(
+                        process_name=self.process_name, stream=stream_name,
+                        message=line.strip()))
 
     def _wait_for_exit(self, popen):
+        """Wait for the subprocess to exit.
+
+        Args:
+          popen (Popen): The subprocess object.
+        Return:
+          (int, bool): Subprocess exit code, True if killed because of timeout.
+        """
         exit_code = popen.poll()
         while exit_code is None:
             sleep(1)
@@ -274,16 +328,17 @@ class CommandExecutor(object):
 
         killed = exit_code in (124, 128+9)
 
-        self._reap_children(popen.pid)
+        if docker_util.in_docker():
+            self._reap_children(popen.pid)
 
-        for what, stream in (('stdout', popen.stdout),
-                             ('stderr', popen.stderr)):
+        for stream_name, stream in (('stdout', popen.stdout),
+                                    ('stderr', popen.stderr)):
             try:
                 stream.close()
             except Exception as e:
                 self.log.warning(
-                    'Could not close command {}: <{}> {}'.format(
-                        what, e.__class__.__name__, e))
+                    'Could not close command stream {}: <{}> {}'.format(
+                        stream_name, e.__class__.__name__, e))
 
         return exit_code, killed
 
@@ -305,9 +360,70 @@ class CommandExecutor(object):
             raise
 
     @staticmethod
-    def _write_output(what, msg, output):
+    def _write_output(stream_name, msg, output):
         output.write('%s - %s: %s' % (
-            datetime.utcnow().isoformat(), what.upper(), msg))
+            datetime.utcnow().isoformat(), stream_name.upper(), msg))
+
+
+class DockerExecutor(CommandExecutor):
+    """Class for execution of commands wrapped in a docker image.
+    The entrypoint of the image will be called with the provided arguments.
+
+    Example usage:
+
+    >>> def callback_function(message):
+    >>>     print(message)
+    >>> c = DockerExecutor('Command in docker',
+                           'my.registry.com/imagename:tag', log)
+    >>> c.execute(['argument1', 'arg2'], callback_function)
+
+    The image is pulled from the registyr if it does not exist on the host.
+    """
+
+    def __init__(self, name, image_url, log, auto_remove=True,
+                 environment=None):
+        environment = environment or {}
+        self.image_url = image_url
+        env = sum(
+            [['-e', '"%s=%s"' % (k, v)] for k, v in environment.items()], [])
+
+        cmd = ['docker', 'run', '-i']
+        if auto_remove:
+            cmd.append('--rm')
+        cmd += env + [image_url]
+        super(DockerExecutor, self).__init__(name, cmd, log)
+
+    def execute(self, command_args, output_callback, timeout=None):
+        pull_exit_code = self.pull_image(output_callback)
+        if pull_exit_code != 0:
+            return pull_exit_code, 0
+        return super(DockerExecutor, self).execute(
+            command_args, output_callback, timeout=timeout)
+
+    def pull_image(self, output_callback):
+        if not self.image_exists():
+            executor = CommandExecutor(
+                'Pull image', ['docker', 'pull'], self.log)
+            code, _ = executor.execute([self.image_url], output_callback)
+            return code
+        return 0
+
+    def image_exists(self):
+        executor = CommandExecutor(
+            'Image exists', ['docker', 'images', '-q'], self.log)
+
+        def output_callback(message):
+            if 'EXECUTOR' in message:
+                return
+            output_callback.exists = bool(message)
+        output_callback.exists = False
+
+        code, _ = executor.execute([self.image_url], output_callback)
+        if code != 0:
+            raise ExecutorError(
+                'Could not check if docker image %s exists, exit code: %s' % (
+                    self.image_url, code))
+        return output_callback.exists
 
 
 def get_argparser():
@@ -323,6 +439,11 @@ def main(args=None):
     parser = get_argparser()
     args = parser.parse_args(args)
     if args.INPUT_DATA_URL:
+        if not docker_util.in_docker():
+            # TODO: Add support for giving a processing image url via command
+            #       line.
+            print('Cannot run job outside of docker')
+            return 1
         worker = UWorker()
         return worker.do_job(args.INPUT_DATA_URL)
     else:
