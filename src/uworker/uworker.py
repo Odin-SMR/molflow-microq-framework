@@ -4,6 +4,24 @@ Worker that performs jobs provided by a uservice api.
  ---------          --------                      --------------
  |Job API| <------> |Worker| - <Command> <------> |External API|
  ---------          --------                      --------------
+
+The worker can run on the host or in a docker image.
+In both cases the root url and credentials to the job api must be available
+as environment variables.
+
+Worker on host
+--------------
+
+The worker asks the job api for a job from any project (the job api prioritize
+the projects).
+The jobs must include an url to a docker image that the worker pulls.
+
+Worker in docker image
+----------------------
+
+The worker asks the job api for a job from a certain project.
+The project and the command that should be executed for all the jobs in the
+project are provided to the docker container as environment variables.
 """
 
 import os
@@ -73,9 +91,9 @@ class UWorker(object):
 
     1. Ask job api for jobs to perform.
     2. Claim a job.
-    3. Call job command with source and target url as arguments.
-    4. Continuously send output from command to api.
-    5. When command exits, send exit code to api and set job status to
+    3. Run job command/image with source and target url as arguments.
+    4. Continuously send output from command/image to api.
+    5. When command/image exits, send exit code to api and set job status to
        finished if code == 0, else set status to failed.
 
     The job command
@@ -107,8 +125,8 @@ class UWorker(object):
         self.name = '{class_name}_{host}'.format(
             class_name=self.__class__.__name__,
             host=config['hostname'])
-        self.log = get_logger(self.name, to_file=start_service,
-                              to_stdout=not start_service)
+        self.log = get_logger(
+            self.name, to_file=start_service, to_stdout=True)
         self.job_count = 0
         self.log_config(config)
         self.project = self.job_type = self.job_timeout = self.cmd = None

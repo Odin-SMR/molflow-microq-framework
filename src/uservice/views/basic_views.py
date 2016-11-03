@@ -34,7 +34,7 @@ def abort(status_code, message=None):
 class BasicView(MethodView):
     """Base class for views"""
     def __init__(self):
-        self.log = get_logger('UService')
+        self.log = get_logger('UService', to_stdout=True)
         super(BasicView, self).__init__()
 
     def _get_projects_database(self):
