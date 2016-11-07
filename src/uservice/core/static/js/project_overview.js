@@ -1,4 +1,16 @@
-// Fuctions for showing and exploring processing status
+// Functions for showing and exploring processing status
+
+
+// Make a list from an array:
+function objectAsList(arr) {
+    list = "<ul>";
+
+    for (var key in arr) {
+        list += "<li>" + key + ": " + arr[key] + "</li>";
+    }
+
+    return list + "</ul>";
+}
 
 
 // Initialise the project overview, both plot and table:
@@ -13,7 +25,24 @@ function initProjectOverview(project) {
         '/rest_api/v4/' + project,
         function(rawdata) {
 			$("#overviewHeader").html("Project: " + rawdata.Project);
+			// $("#overviewPrioScore").html("Priority: " + rawdata.PrioScore);
+			$("#overviewDeadline").html("Deadline: " + rawdata.Deadline);
 			$("#overviewETA").html("ETA: " + rawdata.ETA);
+			$("#overviewTotalTime").html(
+			    "Total time (s): " + rawdata.TotalProcessingTime);
+			if (rawdata.URLS["URL-Processing-image"]) {
+                $("#overviewImage").html(
+                    "Processing image: " +
+                    "<a href='" + rawdata.URLS["URL-Processing-image"] +
+                    "'>" + rawdata.URLS["URL-Processing-image"] + "</a>"
+                );
+            } else {
+                $("#overviewImage").html("Processing image: <i>N/A</i>");
+            }
+            if (!jQuery.isEmptyObject(rawdata.Environment)) {
+                $("#overviewEnv").html(
+                    "Environment:" + objectAsList(rawdata.Environment));
+            }
 
 			// Initialise overview plot and job table:
 			uri = rawdata.URLS["URL-DailyCount"];
