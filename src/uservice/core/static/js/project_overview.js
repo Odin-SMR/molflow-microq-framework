@@ -86,8 +86,8 @@ function updateProjectOverviewPlot(uri) {
 		zoom: [],
 	};
 	var barWidth = {
-	    "Daily": 14400000,
-	    "Hourly":  600000,
+	    "Daily": 18000000,
+	    "Hourly":  840000,
 	};
 
     $.getJSON(uri, function(rawdata) {
