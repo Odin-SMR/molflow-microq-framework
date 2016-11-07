@@ -10,6 +10,11 @@ function initServerStatus() {
         },
         "columns": [
             {
+                "data": "PrioScore",
+                "title": "Priority",
+ 				"defaultContent": "<i>N/A</i>",
+            },
+            {
                 "data": "Name",
                 "title": "Project",
  				"defaultContent": "<i>N/A</i>",
