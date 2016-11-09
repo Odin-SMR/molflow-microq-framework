@@ -131,8 +131,18 @@
         },
         {
             "type": "file",
+            "source": "microq.tar.gz",
+            "destination": "/tmp/microq.tar.gz"
+        },
+        {
+            "type": "file",
             "source": "scripts/start_worker.sh",
             "destination": "/tmp/start_worker.sh"
+        },
+        {
+            "type": "file",
+            "source": "../../uworker-requirements.txt",
+            "destination": "/tmp/uworker-requirements.txt"
         },
         {
             "type": "file",
