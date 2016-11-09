@@ -19,6 +19,7 @@ setup(
         'passlib',
         'flask-sqlalchemy',
         'sqlalchemy',
+        'sqlalchemy-migrate',
         'pymysql',
         'jsonschema',
         'jsl',

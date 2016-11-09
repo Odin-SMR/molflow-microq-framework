@@ -7,16 +7,12 @@ sudo apt-get install -y -qq python-dev python-pip --no-install-recommends
 sudo pip install --upgrade pip
 sudo pip install setuptools
 
-wget --no-check-certificate --no-verbose https://jenkins2.molflow.com/job/RESTful%20uQ%20Job%20Server/283/artifact/microq.tar.gz
-
-tar xf microq.tar.gz
-rm microq.tar.gz
+tar xf /tmp/microq.tar.gz
+rm /tmp/microq.tar.gz
 sudo mv src /app
 
 # TODO: Install in virtual env
-sudo pip install -r uworker-requirements.txt
-
-cd /app && sudo python setup.py develop
+sudo pip install -r /tmp/uworker-requirements.txt
 
 # TODO: Do not run as root
 sudo mv /tmp/start_worker.sh /root/start_worker.sh

@@ -11,7 +11,8 @@
 # OpenStack API is version 2.0. For example, your cloud provider may implement
 # Image API v1.1, Block Storage API v2, and Compute API v2.0. OS_AUTH_URL is
 # only for the Identity API served through keystone.
-export OS_AUTH_URL=http://130.238.29.253:5000/v3
+export OS_AUTH_URL=https://smog.uppmax.uu.se:5000/v3
+#export OS_AUTH_URL=https://smog.uppmax.uu.se:5443/v3
 
 # With the addition of Keystone we have standardized on the term **tenant**
 # as the entity that owns the resources.
@@ -29,6 +30,13 @@ export OS_USERNAME=$OS_USERNAME_INPUT
 echo "Please enter your OpenStack Password: "
 read -sr OS_PASSWORD_INPUT
 export OS_PASSWORD=$OS_PASSWORD_INPUT
+
+export OS_USER_DOMAIN_NAME=Default
+export OS_PROJECT_DOMAIN_NAME=Default
+
+# For openstackclient
+export OS_IDENTITY_API_VERSION=3
+export OS_AUTH_VERSION=3
 
 # If your configuration has multiple regions, we set that information here.
 # OS_REGION_NAME is optional and only valid in certain environments.

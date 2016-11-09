@@ -15,3 +15,5 @@ priority=10
 EOF
 
 sudo mv uworker.conf /etc/supervisor/conf.d/uworker.conf
+
+sudo systemctl enable supervisor
