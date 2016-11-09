@@ -8,7 +8,7 @@ migrate.changeset
 
 
 def upgrade(migrate_engine):
-    meta = MetaData(bind=migrate_engine)
+    meta = MetaData(bind=migrate_engine, reflect=True)
     projects = Table('projects', meta, autoload=True)
 
     print("Upgrade 'projects'")
@@ -17,7 +17,7 @@ def upgrade(migrate_engine):
     pkey.drop()
 
     projects.c.name.alter(name='id')
-    meta = MetaData(bind=migrate_engine)
+    meta = MetaData(bind=migrate_engine, reflect=True)
     projects = Table('projects', meta, autoload=True)
     pkey = PrimaryKeyConstraint('id', table=projects)
     pkey.create()
@@ -48,7 +48,7 @@ def upgrade(migrate_engine):
 
 
 def downgrade(migrate_engine):
-    meta = MetaData(bind=migrate_engine)
+    meta = MetaData(bind=migrate_engine, reflect=True)
     projects = Table('projects', meta, autoload=True)
 
     print("Downgrade 'projects'")
@@ -66,7 +66,7 @@ def downgrade(migrate_engine):
     pkey.drop()
 
     projects.c.id.alter(name='name')
-    meta = MetaData(bind=migrate_engine)
+    meta = MetaData(bind=migrate_engine, reflect=True)
     projects = Table('projects', meta, autoload=True)
     pkey = PrimaryKeyConstraint('name', table=projects)
     pkey.create()
