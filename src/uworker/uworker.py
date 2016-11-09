@@ -399,7 +399,7 @@ class DockerExecutor(CommandExecutor):
     """
 
     def __init__(self, name, image_url, log, auto_remove=True,
-                 environment=None):
+                 environment=None, network='host'):
         environment = environment or {}
         self.image_url = image_url
         env = sum(
@@ -408,6 +408,8 @@ class DockerExecutor(CommandExecutor):
         cmd = ['docker', 'run', '-i']
         if auto_remove:
             cmd.append('--rm')
+        if network:
+            cmd.append('--network=%s' % network)
         cmd += env + [image_url]
         super(DockerExecutor, self).__init__(name, cmd, log)
 
