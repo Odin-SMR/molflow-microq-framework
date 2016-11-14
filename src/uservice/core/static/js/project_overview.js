@@ -115,8 +115,8 @@ function updateProjectOverviewPlot(uri) {
 		zoom: [],
 	};
 	var barWidth = {
-	    "Daily": 18000000,
-	    "Hourly":  840000,
+	    "Daily": 21600000, // 6 hours
+	    "Hourly":  900000, // 15 minutes
 	};
 
     $.getJSON(uri, function(rawdata) {
@@ -184,7 +184,7 @@ function updateProjectOverviewPlot(uri) {
         };
 
         // (re)initialise overview plot:
-        $.plot($('#overviewPlot'), [claimed, finished, failed, workers], {
+        $.plot($('#overviewPlot'), [claimed, finished, failed], {
             xaxis: {
                 mode: "time",
             },
