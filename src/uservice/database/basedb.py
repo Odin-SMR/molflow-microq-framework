@@ -40,6 +40,7 @@ class BaseJobDatabaseAPI(object):
     # TODO: Put this in a job model
     CLAIMED = 'claimed'
     CLAIMED_TIMESTAMP = 'claimed_timestamp'
+    WORKER = 'worker'
     PUBLIC_FIELDS = [
         'id', 'type', 'source_url', 'view_result_url', 'claimed',
         'current_status', 'worker', 'added_timestamp', 'claimed_timestamp',
@@ -160,7 +161,11 @@ class BaseJobDatabaseAPI(object):
 
     def unclaim_job(self, job_id):
         """Unclaim a job"""
-        self._update_job(job_id, {self.CLAIMED: False})
+        unclaim_data = {
+            self.CLAIMED: False,
+            self.WORKER: None,
+            self.CLAIMED_TIMESTAMP: None}
+        return self._update_job(job_id, unclaim_data)
 
     def update_job(self, job_id, **data):
         self._verify(data)

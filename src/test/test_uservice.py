@@ -551,6 +551,10 @@ class TestJobViews(BaseWithWorkerUser):
         r = requests.get(self._apiroot + "/v4/project/jobs/none/status")
         self.assertEqual(r.status_code, 404)
 
+    def _get_nr_claimed(self):
+        project_info = requests.get(self._apiroot + "/v4/project").json()
+        return project_info['NrJobsClaimed']
+
     def test_claim_job(self):
         """Test claiming a job."""
         job = requests.get(self._apiroot + "/v4/project/jobs/fetch",
@@ -565,18 +569,23 @@ class TestJobViews(BaseWithWorkerUser):
                          json={'Worker': self._username},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
+        self.assertEqual(self._get_nr_claimed(), 1)
         # Should not be able to claim same job again
         r = requests.put(job["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
                          auth=self._auth)
         self.assertEqual(r.status_code, 409)
+        self.assertEqual(self._get_nr_claimed(), 1)
         # Should be able to claim after release of job
         r = requests.delete(job["Job"]["URLS"]["URL-claim"],
                             auth=self._auth)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self._get_nr_claimed(), 0)
         r = requests.put(job["Job"]["URLS"]["URL-claim"],
                          json={'Worker': self._username},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
+        self.assertEqual(self._get_nr_claimed(), 1)
 
         # Fetch current claim data
         r = requests.get(self._apiroot + "/v4/project/jobs/{}/claim".format(

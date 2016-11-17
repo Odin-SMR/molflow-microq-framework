@@ -148,8 +148,9 @@ class JobClaim(BasicJobView):
                       claimed_timestamp=now, worker=worker)
         projects_db = self._get_projects_database()
         projects_db.job_claimed(project)
-        self.log.info("Job {0} claimed by {1} to worker {2}".format(
-            job_id, g.user.username, worker))
+        self.log.info(
+            "Job {0} in project {1} claimed by {2} to worker {3}".format(
+                job_id, project, g.user.username, worker))
         return jsonify(Version=version, Project=project, ID=job_id,
                        Call="PUT", Time=now.isoformat(),
                        ClaimedBy=worker)
@@ -157,11 +158,15 @@ class JobClaim(BasicJobView):
     def _delete_view(self, version, project, job_id):
         """Used to free a job"""
         db = self._get_jobs_database(project)
-        if not db.job_exists(job_id):
+        job = db.get_job(job_id)
+        if not job:
             return abort(404)
-        if db.unclaim_job(job_id):
-            db.update_job(job_id, claimed_timestamp=None, worker=None)
-            self.log.info("Job {0} was unlocked by {1}.".format(
-                job_id, g.user.username))
+        if job['claimed']:
+            db.unclaim_job(job_id)
+            self.log.info("Job {0} in project {1} was unlocked by {2}.".format(
+                job_id, project, g.user.username))
+            projects_db = self._get_projects_database()
+            projects_db.job_unclaimed(project, bool(job['failed_timestamp']))
+
         return jsonify(Version=version, Project=project, ID=job_id,
                        Call="DELETE")
