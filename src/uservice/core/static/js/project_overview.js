@@ -24,12 +24,21 @@ function initProjectOverview(project) {
     $.getJSON(
         '/rest_api/v4/' + project,
         function(rawdata) {
-			$("#overviewHeader").html("Project: " + rawdata.Project);
+			$("#overviewHeader").html("Project: " + rawdata.Name);
 			// $("#overviewPrioScore").html("Priority: " + rawdata.PrioScore);
 			$("#overviewDeadline").html("Deadline: " + rawdata.Deadline);
 			$("#overviewETA").html("ETA: " + rawdata.ETA);
 			$("#overviewTotalTime").html(
-			    "Total time (s): " + rawdata.TotalProcessingTime);
+			    "Total time (s): " + rawdata.TotalProcessingTime.toFixed(0));
+            var average = '<i>N/A</i>';
+            var nr_done = rawdata.NrJobsFinished + rawdata.NrJobsFailed;
+            if (nr_done !== 0) {
+                average = (rawdata.TotalProcessingTime/nr_done).toFixed(0);
+            }
+            $("#overviewAverageTime").html(
+			    "Average time per job (s): " + average);
+            $("#overviewNrJobs").html(
+			    "Nr jobs available/finished/failed: " + (rawdata.JobStates.Available || 0) + '/' + (rawdata.JobStates.Finished || 0) + '/' + (rawdata.JobStates.Failed || 0));
 			if (rawdata.URLS["URL-Processing-image"]) {
                 $("#overviewImage").html(
                     "Processing image: " +

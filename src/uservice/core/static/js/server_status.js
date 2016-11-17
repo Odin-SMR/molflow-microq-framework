@@ -12,6 +12,9 @@ function initServerStatus() {
             {
                 "data": "PrioScore",
                 "title": "Priority",
+                "render": function ( data, type, full, meta ) {
+                    return Number(data.toFixed(3));
+                },
  				"defaultContent": "<i>N/A</i>",
             },
             {
@@ -20,10 +23,34 @@ function initServerStatus() {
  				"defaultContent": "<i>N/A</i>",
             },
             {
+                "data": "NrJobsAdded",
+                "title": "Jobs (Tot/Left/Fail)",
+                "render": function ( data, type, full, meta ) {
+                    var left = data - full.NrJobsFailed - full.NrJobsFinished;
+                    return data + '/' + left + '/' + full.NrJobsFailed;
+                },
+ 				"defaultContent": "<i>N/A</i>",
+            },
+            {
+                "data": "TotalProcessingTime",
+                "title": "Average time (sec)",
+                "render": function ( data, type, full, meta ) {
+                    var nr_done = full.NrJobsFailed + full.NrJobsFinished;
+                    if (nr_done === 0) {
+                        return '<i>N/A</i>';
+                    }
+                    var average = data/nr_done;
+                    return average.toFixed(0);
+                },
+ 				"defaultContent": "<i>N/A</i>",
+            },
+            /*
+            {
                 "data": "CreatedBy",
                 "title": "Created by",
  				"defaultContent": "<i>N/A</i>",
             },
+            */
             {
                 "data": "CreatedAt",
                 "title": "Started",
@@ -79,7 +106,7 @@ function initServerStatus() {
             },
             */
             {
-                "data": "Name",
+                "data": "Id",
                 "title": "Project details",
                 "render": function ( data, type, full, meta ) {
                     return '<a href="/' + data + '">More...</a>';
@@ -91,6 +118,7 @@ function initServerStatus() {
         "ordering": true,
         "info":     false,
     });
+    table.order([0, 'desc']).draw();
 
     /*
     $('#projectsTable tbody').on('click', 'tr', function () {

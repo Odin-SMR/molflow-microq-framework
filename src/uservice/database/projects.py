@@ -208,6 +208,15 @@ class ProjectsDB(object):
         return self.update_project(
             project_id, last_claimed_timestamp=datetime.utcnow(), nr_claimed=1)
 
+    def job_unclaimed(self, project_id, failed):
+        """Report that a job in this project was released"""
+        if failed:
+            return self.update_project(
+                project_id, nr_claimed=-1, nr_failed=-1)
+        else:
+            return self.update_project(
+                project_id, nr_claimed=-1, nr_finished=-1)
+
     def job_finished(self, project_id, processing_time):
         """Report that a job in this project was finished"""
         return self.update_project(
