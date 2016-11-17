@@ -3,6 +3,15 @@
 
 // Initialise the server status:
 function initServerStatus() {
+
+    // yyyy-mm-ddTHH:MM:SS -> yyyy-mm-ddTHH:MM
+    function removeSecond(s) {
+        if (s === null) {
+            return "<i>N/A</i>";
+        }
+        return s.slice(0, -3);
+    }
+
     var table = $('#projectsTable').DataTable({
         "ajax":{
             "url": "/rest_api/v4/projects",
@@ -15,25 +24,25 @@ function initServerStatus() {
                 "render": function ( data, type, full, meta ) {
                     return Number(data.toFixed(3));
                 },
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Name",
                 "title": "Project",
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "NrJobsAdded",
-                "title": "Jobs (Tot/Left/Fail)",
+                "title": "Jobs Tot/Left/Err",
                 "render": function ( data, type, full, meta ) {
                     var left = data - full.NrJobsFailed - full.NrJobsFinished;
                     return data + '/' + left + '/' + full.NrJobsFailed;
                 },
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "TotalProcessingTime",
-                "title": "Average time (sec)",
+                "title": "Average time (s)",
                 "render": function ( data, type, full, meta ) {
                     var nr_done = full.NrJobsFailed + full.NrJobsFinished;
                     if (nr_done === 0) {
@@ -42,7 +51,7 @@ function initServerStatus() {
                     var average = data/nr_done;
                     return average.toFixed(0);
                 },
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
             /*
             {
@@ -54,12 +63,18 @@ function initServerStatus() {
             {
                 "data": "CreatedAt",
                 "title": "Started",
- 				"defaultContent": "<i>N/A</i>",
+                "render": function ( data, type, full, meta ) {
+                    return removeSecond(data);
+                },
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Deadline",
                 "title": "Deadline",
- 				"defaultContent": "<i>N/A</i>",
+                "render": function ( data, type, full, meta ) {
+                    return removeSecond(data);
+                },
+                "defaultContent": "<i>N/A</i>",
             },
             /*
             {
@@ -76,12 +91,18 @@ function initServerStatus() {
             {
                 "data": "LastJobAddedAt",
                 "title": "Last added",
- 				"defaultContent": "<i>N/A</i>",
+                "render": function ( data, type, full, meta ) {
+                    return removeSecond(data);
+                },
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "LastJobClaimedAt",
                 "title": "Last claimed",
- 				"defaultContent": "<i>N/A</i>",
+                "render": function ( data, type, full, meta ) {
+                    return removeSecond(data);
+                },
+                "defaultContent": "<i>N/A</i>",
             },
             /*
             {
@@ -111,7 +132,7 @@ function initServerStatus() {
                 "render": function ( data, type, full, meta ) {
                     return '<a href="/' + data + '">More...</a>';
                 },
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
         ],
         "paging":   true,
