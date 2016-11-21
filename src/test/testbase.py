@@ -1,11 +1,29 @@
+"""Base classes for tests of uService"""
 import os
 import unittest
 import requests
+import pytest
+
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
+slow = pytest.mark.skipif(  # pylint: disable=invalid-name
+    not pytest.config.getoption("--runslow"),  # pylint: disable=no-member
+    reason="need --runslow option to run"
+)
 
-class BaseTest(unittest.TestCase):
+system = pytest.mark.skipif(  # pylint: disable=invalid-name
+    not pytest.config.getoption("--runsystem"),  # pylint: disable=no-member
+    reason="need --runsystem option to run"
+)
+
+disable = pytest.mark.skipif(  # pylint: disable=invalid-name
+    not pytest.config.getoption("--rundisabled"),  # pylint: disable=no-member
+    reason="need --rundisabled option to run"
+)
+
+
+class BaseSystemTest(unittest.TestCase):
 
     TEST_URL = 'http://example.com'
 
@@ -110,7 +128,7 @@ class BaseTest(unittest.TestCase):
                         auth=(cls._adminuser, cls._adminpw))
 
 
-class BaseWithWorkerUser(BaseTest):
+class BaseWithWorkerUser(BaseSystemTest):
 
     @classmethod
     def setUpClass(cls):

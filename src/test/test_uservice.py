@@ -2,7 +2,10 @@ import urllib
 from datetime import datetime, timedelta
 
 import requests
-from test.testbase import BaseTest, BaseWithWorkerUser, BaseInsertedJobs
+import pytest
+
+from test.testbase import (
+    BaseSystemTest, BaseWithWorkerUser, BaseInsertedJobs, system)
 
 
 class BaseJobsTest(BaseWithWorkerUser):
@@ -10,7 +13,7 @@ class BaseJobsTest(BaseWithWorkerUser):
     JOBS = [
         {'id': '1',
          'type': 'test',
-         'source_url': BaseTest.TEST_URL,
+         'source_url': BaseSystemTest.TEST_URL,
          'worker': 'worker1',
          'added_timestamp': '2000-01-01 10:00',
          'claimed_timestamp': '2000-01-01 10:00',
@@ -20,7 +23,7 @@ class BaseJobsTest(BaseWithWorkerUser):
          },
         {'id': '2',
          'type': 'test',
-         'source_url': BaseTest.TEST_URL,
+         'source_url': BaseSystemTest.TEST_URL,
          'worker': 'worker2',
          'added_timestamp': '2000-01-01 10:00',
          'claimed_timestamp': '2000-01-01 10:00',
@@ -30,7 +33,7 @@ class BaseJobsTest(BaseWithWorkerUser):
          },
         {'id': '3',
          'type': 'test',
-         'source_url': BaseTest.TEST_URL,
+         'source_url': BaseSystemTest.TEST_URL,
          'worker': 'worker1',
          'added_timestamp': '2000-01-01 10:00',
          'claimed_timestamp': '2000-01-01 11:00',
@@ -40,7 +43,7 @@ class BaseJobsTest(BaseWithWorkerUser):
          },
         {'id': '4',
          'type': 'test',
-         'source_url': BaseTest.TEST_URL,
+         'source_url': BaseSystemTest.TEST_URL,
          'added_timestamp': '2000-01-01 10:00',
          }
     ]
@@ -57,7 +60,9 @@ class BaseJobsTest(BaseWithWorkerUser):
             raise e
 
 
-class TestAdmin(BaseTest):
+@system
+@pytest.mark.usefixtures("dockercompose")
+class TestAdmin(BaseSystemTest):
 
     def test_adding_user(self):
         """Test adding and deleting a user"""
@@ -95,6 +100,8 @@ class TestAdmin(BaseTest):
         self.assertEqual(r.status_code, 204)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestAuthentication(BaseWithWorkerUser):
 
     @classmethod
@@ -103,7 +110,7 @@ class TestAuthentication(BaseWithWorkerUser):
         try:
             status_code = cls._insert_job(
                 {'id': '42', 'type': 'test_type',
-                 'source_url': BaseTest.TEST_URL})
+                 'source_url': BaseSystemTest.TEST_URL})
             assert status_code == 201, status_code
         except Exception as e:
             super(TestAuthentication, cls).tearDownClass()
@@ -136,6 +143,8 @@ class TestAuthentication(BaseWithWorkerUser):
         self.assertEqual(r1.status_code, 200)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestFetchJob(BaseInsertedJobs):
 
     def test_fetch_job(self):
@@ -153,15 +162,17 @@ class TestFetchJob(BaseInsertedJobs):
             u'Environment': {},
             u'URLS': {
                 u'URL-image': None,
-                u'URL-source': BaseTest.TEST_URL,
-                u'URL-target': BaseTest.TEST_URL,
+                u'URL-source': BaseSystemTest.TEST_URL,
+                u'URL-target': BaseSystemTest.TEST_URL,
                 u'URL-claim': self._apiroot + u'/v4/project/jobs/42/claim',
                 u'URL-output': self._apiroot + u'/v4/project/jobs/42/output',
                 u'URL-status': self._apiroot + u'/v4/project/jobs/42/status'
             }})
 
-        project_data = {'environment': {'v': 1},
-                        'processing_image_url': BaseTest.TEST_URL + '/image'}
+        project_data = {
+            'environment': {'v': 1},
+            'processing_image_url': BaseSystemTest.TEST_URL + '/image'
+        }
         r = requests.put(self._apiroot + '/v4/project',
                          json=project_data, auth=self._auth)
         self.assertEqual(r.status_code, 204)
@@ -174,38 +185,40 @@ class TestFetchJob(BaseInsertedJobs):
             u'JobID': u'42',
             u'Environment': {'v': 1},
             u'URLS': {
-                u'URL-image': BaseTest.TEST_URL + '/image',
-                u'URL-source': BaseTest.TEST_URL,
-                u'URL-target': BaseTest.TEST_URL,
+                u'URL-image': BaseSystemTest.TEST_URL + '/image',
+                u'URL-source': BaseSystemTest.TEST_URL,
+                u'URL-target': BaseSystemTest.TEST_URL,
                 u'URL-claim': self._apiroot + u'/v4/project/jobs/42/claim',
                 u'URL-output': self._apiroot + u'/v4/project/jobs/42/output',
                 u'URL-status': self._apiroot + u'/v4/project/jobs/42/status'
             }})
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestListJobs(BaseJobsTest):
 
     JOBS = [
         {'id': '1', 'type': 'test_type',
-         'source_url': BaseTest.TEST_URL + '/source',
-         'target_url': BaseTest.TEST_URL + '/target',
-         'view_result_url': BaseTest.TEST_URL + '/view_result'},
+         'source_url': BaseSystemTest.TEST_URL + '/source',
+         'target_url': BaseSystemTest.TEST_URL + '/target',
+         'view_result_url': BaseSystemTest.TEST_URL + '/view_result'},
         {'id': '2', 'type': 'test_type',
-         'source_url': BaseTest.TEST_URL,
-         'target_url': BaseTest.TEST_URL,
+         'source_url': BaseSystemTest.TEST_URL,
+         'target_url': BaseSystemTest.TEST_URL,
          'claimed_timestamp': '2016-01-01 10:00',
          'current_status': 'CLAIMED',
          'worker': 'worker1'},
         {'id': '3', 'type': 'test_type',
-         'source_url': BaseTest.TEST_URL,
-         'target_url': BaseTest.TEST_URL,
+         'source_url': BaseSystemTest.TEST_URL,
+         'target_url': BaseSystemTest.TEST_URL,
          'claimed_timestamp': '2016-01-01 11:00',
          'finished_timestamp': '2016-01-01 11:10',
          'current_status': 'FINISHED',
          'worker': 'worker2'},
         {'id': '4', 'type': 'other_type',
-         'source_url': BaseTest.TEST_URL,
-         'target_url': BaseTest.TEST_URL,
+         'source_url': BaseSystemTest.TEST_URL,
+         'target_url': BaseSystemTest.TEST_URL,
          'claimed_timestamp': '2016-01-01 12:00',
          'failed_timestamp': '2016-01-01 12:10',
          'current_status': 'FAILED',
@@ -228,7 +241,7 @@ class TestListJobs(BaseJobsTest):
             # Missing input_url
             {'id': '1'},
             # Unsupported field
-            {'id': '1', 'input_url': BaseTest.TEST_URL, 'unknown': 's'}
+            {'id': '1', 'input_url': BaseSystemTest.TEST_URL, 'unknown': 's'}
         ]
         for job in bad_jobs:
             self.assertEqual(self._insert_job(job), 400)
@@ -257,10 +270,10 @@ class TestListJobs(BaseJobsTest):
             'Finished': None,
             'Worker': None,
             'URLS': {
-                'URL-Input': BaseTest.TEST_URL + '/source',
+                'URL-Input': BaseSystemTest.TEST_URL + '/source',
                 'URL-Output': (
                     self._apiroot + '/v4/project/jobs/1/output'),
-                'URL-Result': BaseTest.TEST_URL + '/view_result'}})
+                'URL-Result': BaseSystemTest.TEST_URL + '/view_result'}})
 
     def test_list_matching(self):
         """Test listing jobs that match provided parameters"""
@@ -291,6 +304,8 @@ class TestListJobs(BaseJobsTest):
             self.assertEqual(len(r.json()["Jobs"]), expected)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestMultipleProjects(BaseWithWorkerUser):
 
     def setUp(self):
@@ -350,6 +365,8 @@ class TestMultipleProjects(BaseWithWorkerUser):
         self.assertEqual(len(projects) - self.nr_orig_active_projects, 2)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestProjectsPrio(BaseJobsTest):
 
     def setUp(self):
@@ -406,7 +423,7 @@ class TestProjectsPrio(BaseJobsTest):
         # Project with one available job, but no processed jobs and deadline
         # passed
         status_code = self._insert_job(
-            {'id': '1', 'source_url': BaseTest.TEST_URL}, 'myproject')
+            {'id': '1', 'source_url': BaseSystemTest.TEST_URL}, 'myproject')
         self.assertEqual(status_code, 201)
         r = requests.put(self._apiroot + "/v4/myproject", auth=self._auth,
                          json={'deadline': '2011-01-01 10:00'})
@@ -437,6 +454,8 @@ class TestProjectsPrio(BaseJobsTest):
             project_count['myproject'], project_count['project'])
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestUpdateProject(BaseWithWorkerUser):
 
     def setUp(self):
@@ -516,6 +535,8 @@ class TestUpdateProject(BaseWithWorkerUser):
         self.assertEqual(r.status_code, 400)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestJobViews(BaseWithWorkerUser):
 
     def setUp(self):
@@ -624,6 +645,8 @@ class TestJobViews(BaseWithWorkerUser):
         self.assertEqual(r.status_code, 404)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestCountJobs(BaseJobsTest):
 
     def test_daily_count(self):
@@ -771,6 +794,8 @@ class TestCountJobs(BaseJobsTest):
         self.assertEqual(r.json(), expected)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestProjectViews(BaseJobsTest):
 
     def test_project_status(self):
