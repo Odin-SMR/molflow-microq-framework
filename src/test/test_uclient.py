@@ -1,6 +1,8 @@
 import json
+import pytest
+
 from uclient.uclient import UClient, UClientError, Job
-from test.testbase import BaseWithWorkerUser
+from test.testbase import BaseWithWorkerUser, system
 
 
 class BaseTestUClient(BaseWithWorkerUser):
@@ -16,6 +18,8 @@ class BaseTestUClient(BaseWithWorkerUser):
                        time_between_retries=0.01, **credentials)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestErrors(BaseTestUClient):
 
     def test_bad_project_name(self):
@@ -43,6 +47,8 @@ class BaseTestWithInsertedJob(BaseTestUClient):
         self._delete_test_project()
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestCredentials(BaseTestWithInsertedJob):
 
     def test_credentials_from_file(self):
@@ -74,6 +80,8 @@ class TestCredentials(BaseTestWithInsertedJob):
             Job.fetch(api, job_type='test_type')
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestJob(BaseTestWithInsertedJob):
 
     def test_job(self):

@@ -5,10 +5,12 @@ import threading
 import unittest
 
 import requests
+import pytest
 from werkzeug.serving import BaseWSGIServer, WSGIRequestHandler
 from werkzeug.wrappers import Request, Response
 
-from test.testbase import BaseWithWorkerUser, TEST_DATA_DIR
+from test.testbase import (
+    BaseWithWorkerUser, TEST_DATA_DIR, disable, slow, system)
 
 from utils.defs import JOB_STATES
 from utils import logs
@@ -63,6 +65,9 @@ class BaseUWorkerTest(BaseWithWorkerUser):
         # TODO: Check that result and output from job were stored.
 
 
+@disable
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestUWorkerInDocker(BaseUWorkerTest):
     """Test worker that is running in a docker container"""
 
@@ -109,6 +114,8 @@ class TestUWorkerInDocker(BaseUWorkerTest):
         uworker.main(['https://example.com/test'])
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 class TestUWorkerOnHost(BaseUWorkerTest):
     """Test worker that is running on the host"""
 
@@ -195,6 +202,7 @@ class TestCommandExecutor(BaseExecutorTest):
         self.assertTrue('Killed Test process' in self.callback.last_message)
 
 
+@slow
 class TestDockerExecutor(BaseExecutorTest):
 
     def test_image_pull(self):
@@ -234,6 +242,8 @@ class TestDockerExecutor(BaseExecutorTest):
         self.assertEqual(return_code, 1)
 
 
+@system
+@pytest.mark.usefixtures("dockercompose")
 @unittest.skipIf(not in_docker(),
                  'Must be run in a container with a running uworker')
 class TestQsmrJob(BaseWithWorkerUser):
