@@ -44,7 +44,8 @@ class BaseJobDatabaseAPI(object):
     PUBLIC_FIELDS = [
         'id', 'type', 'source_url', 'view_result_url', 'claimed',
         'current_status', 'worker', 'added_timestamp', 'claimed_timestamp',
-        'failed_timestamp', 'finished_timestamp', 'worker_output']
+        'failed_timestamp', 'finished_timestamp', 'processing_time',
+        'worker_output']
     PUBLIC_LISTING_FIELDS = PUBLIC_FIELDS[:-1]
 
     SET_BY_USER = set(

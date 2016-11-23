@@ -13,6 +13,7 @@ from flask.views import MethodView
 from utils.validate import validate_project_name
 from utils.logs import get_logger
 from utils.defs import JOB_STATES, TIME_PERIODS
+from utils import analyze_worker_output
 
 from uservice.core.users import auth
 from uservice.database.basedb import get_db as get_jobs_db
@@ -274,6 +275,7 @@ def make_pretty_job(job, project):
     job['IsClaimed'] = job.pop('claimed')
     job['Failed'] = fix_timestamp(job.pop('failed_timestamp'))
     job['Finished'] = fix_timestamp(job.pop('finished_timestamp'))
+    job['ProcessingTime'] = job.pop('processing_time')
     job['Worker'] = job.pop('worker')
     return job
 
@@ -367,6 +369,62 @@ class ListJobs(BasicProjectView):
             projects_db.insert_project(project, g.user.username)
             projects_db.job_added(project)
         return jsonify(Version=version, Project=project, ID=job_id), 201
+
+
+class AnalyzeFailedJobs(BasicProjectView):
+    """View for listing processing output lines for failed jobs
+    as JSON object
+    """
+
+    def _get_view(self, version, project):
+        start = request.args.get('start')
+        end = request.args.get('end')
+
+        if start:
+            try:
+                start = parse_datetime(start)
+            except ValueError:
+                return abort(400, 'Bad time format: %r' % start)
+        if end:
+            try:
+                end = parse_datetime(end)
+            except ValueError:
+                return abort(400, 'Bad time format: %r' % end)
+
+        db = self._get_jobs_database(project)
+        match = {'current_status': JOB_STATES.failed}
+        jobs = db.get_failed_jobs(
+            match=match, start_time=start, end_time=end, limit=1000,
+            fields=['id', 'processing_time', 'worker', 'failed_timestamp',
+                    'worker_output'])
+        ranked_lines = analyze_worker_output.rank_errors(list(jobs))
+
+        def pretty_job(job):
+            return {
+                'Id': job['id'],
+                'ProcessingTime': job['processing_time'],
+                'Worker': job['worker'],
+                'Failed': job['failed_timestamp']
+            }
+        jobs = {job['id']: pretty_job(job) for job in jobs}
+
+        def pretty_line(line):
+            return {
+                'Line': line['line'],
+                'Score': line['score']
+            }
+
+        ranked_lines = [
+            {'Score': item['score'],
+             'Line': item['line'],
+             'CommonLines': [
+                 pretty_line(line) for line in item['common_lines']],
+             'Jobs':  item['jobids']}
+            for item in ranked_lines]
+
+        return jsonify(Version=version, Project=project,
+                       Start=fix_timestamp(start), End=fix_timestamp(end),
+                       Lines=ranked_lines, Jobs=jobs)
 
 
 class CountJobs(BasicProjectView):
