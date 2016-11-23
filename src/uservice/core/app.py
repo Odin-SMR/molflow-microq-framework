@@ -5,7 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 
 from uservice.core.users import get_user_db, auth
 from uservice.views.basic_views import (
-    ListProjects, ListJobs, CountJobs, FetchNextJob, BasicView, FetchJobPrio)
+    ListProjects, ListJobs, CountJobs, FetchNextJob, BasicView, FetchJobPrio,
+    AnalyzeFailedJobs)
 from uservice.views.job_views import JobClaim, JobStatus, JobOutput
 from uservice.views.project_views import ProjectStatus
 from uservice.views.site_views import (JobStatusHumanReadable,
@@ -80,6 +81,12 @@ class JobServer(Flask):
             # GET list of jobs, POST to add new jobs.
             '/rest_api/<version>/<project>/jobs',
             view_func=ListJobs.as_view('listjobs'),
+            methods=["GET", "POST"]
+            )
+        self.add_url_rule(
+            # GET list of jobs, POST to add new jobs.
+            '/rest_api/<version>/<project>/failures',
+            view_func=AnalyzeFailedJobs.as_view('listfailed'),
             methods=["GET", "POST"]
             )
         self.add_url_rule(

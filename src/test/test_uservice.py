@@ -268,6 +268,7 @@ class TestListJobs(BaseJobsTest):
             'IsClaimed': False,
             'Failed': None,
             'Finished': None,
+            'ProcessingTime': None,
             'Worker': None,
             'URLS': {
                 'URL-Input': BaseSystemTest.TEST_URL + '/source',
@@ -302,6 +303,13 @@ class TestListJobs(BaseJobsTest):
                                  "".format(urllib.urlencode(param))))
             self.assertEqual(r.status_code, 200)
             self.assertEqual(len(r.json()["Jobs"]), expected)
+
+    def test_analyze_failed_jobs(self):
+        r = requests.get(self._apiroot + "/v4/QSMRVDS/failures")
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertTrue(isinstance(data['Lines'], list))
+        self.assertGreater(len(data['Lines']), 0)
 
 
 @system
