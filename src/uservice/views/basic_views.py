@@ -393,18 +393,18 @@ class AnalyzeFailedJobs(BasicProjectView):
 
         db = self._get_jobs_database(project)
         match = {'current_status': JOB_STATES.failed}
-        jobs = db.get_failed_jobs(
+        jobs = list(db.get_failed_jobs(
             match=match, start_time=start, end_time=end, limit=1000,
             fields=['id', 'processing_time', 'worker', 'failed_timestamp',
-                    'worker_output'])
-        ranked_lines = analyze_worker_output.rank_errors(list(jobs))
+                    'worker_output']))
+        ranked_lines = analyze_worker_output.rank_errors(jobs)
 
         def pretty_job(job):
             return {
                 'Id': job['id'],
                 'ProcessingTime': job['processing_time'],
                 'Worker': job['worker'],
-                'Failed': job['failed_timestamp']
+                'Failed': fix_timestamp(job['failed_timestamp'])
             }
         jobs = {job['id']: pretty_job(job) for job in jobs}
 

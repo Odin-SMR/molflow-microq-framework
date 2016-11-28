@@ -13,7 +13,7 @@
     {% endif %}
 <div class="container-fluid">
     <div class="row">
-        <h3 id="overviewHeader"></h3>
+        <h2 id="overviewHeader"></h2>
         <h4 id="overviewPrioScore"></h4>
         <h4 id="overviewDeadline"></h4>
         <h4 id="overviewETA"></h4>
@@ -36,6 +36,10 @@
             Clicking on a row in the table will display the console output
             (<i>StdOut/StdErr</i>) from the worker.
             </p>
+            <p>
+              <a href="/{{ data.project.id }}/failures">Click here for
+                analyzation of the console output of the failed jobs.</a>
+            </p>
         </div>
         <div id="overviewPlot" style="max-width:1200px;min-width:283px;max-height:742px;min-height:458px"</div>
     </div>
@@ -53,7 +57,7 @@
     <script type="text/javascript">
         // When the document is ready
         $(document).ready(function () {
-            initProjectOverview('{{ data.project }}');
+            initProjectOverview('{{ data.project.id }}');
         });
     </script>
 {% endblock %}

@@ -1,8 +1,10 @@
 """ Views that render site pages
 """
 from os import environ
-from flask import render_template
+from flask import render_template, abort
 from flask.views import MethodView
+
+from uservice.database.projects import get_db as get_projects_db
 
 
 class ListJobsHumanReadable(MethodView):
@@ -33,5 +35,21 @@ class ProjectStatusHumanReadable(MethodView):
     """Get project status as html"""
     def get(self, project):
         """GET"""
-        data = dict(project=project)
+        db = get_projects_db()
+        project_data = db.get_project(project)
+        if not project_data:
+            abort(404)
+        data = dict(project=project_data)
         return render_template('project_status.html', data=data)
+
+
+class FailedHumanReadable(MethodView):
+    """Get project status as html"""
+    def get(self, project):
+        """GET"""
+        db = get_projects_db()
+        project_data = db.get_project(project)
+        if not project_data:
+            abort(404)
+        data = dict(project=project_data)
+        return render_template('failed_jobs.html', data=data)

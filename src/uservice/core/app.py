@@ -9,10 +9,12 @@ from uservice.views.basic_views import (
     AnalyzeFailedJobs)
 from uservice.views.job_views import JobClaim, JobStatus, JobOutput
 from uservice.views.project_views import ProjectStatus
-from uservice.views.site_views import (JobStatusHumanReadable,
-                                       ListJobsHumanReadable,
-                                       ServerStatusHumanReadable,
-                                       ProjectStatusHumanReadable)
+from uservice.views.site_views import (
+    JobStatusHumanReadable,
+    ListJobsHumanReadable,
+    ServerStatusHumanReadable,
+    ProjectStatusHumanReadable,
+    FailedHumanReadable)
 
 
 class JobServer(Flask):
@@ -41,7 +43,12 @@ class JobServer(Flask):
             view_func=ProjectStatusHumanReadable.as_view('projectstatusshr'),
             methods=["GET"]
             )
-
+        self.add_url_rule(
+            # GET human readable failed jobs analyzation
+            '/<project>/failures',
+            view_func=FailedHumanReadable.as_view('failedshr'),
+            methods=["GET"]
+            )
         self.add_url_rule(
             # GET human readable list of jobs
             '/<project>/jobs',
@@ -84,10 +91,10 @@ class JobServer(Flask):
             methods=["GET", "POST"]
             )
         self.add_url_rule(
-            # GET list of jobs, POST to add new jobs.
+            # GET processing output analyzation for failed jobs.
             '/rest_api/<version>/<project>/failures',
             view_func=AnalyzeFailedJobs.as_view('listfailed'),
-            methods=["GET", "POST"]
+            methods=["GET"]
             )
         self.add_url_rule(
             # Count jobs grouped by a time period and status.
