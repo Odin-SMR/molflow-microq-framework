@@ -24,7 +24,7 @@ function initProjectOverview(project) {
     $.getJSON(
         '/rest_api/v4/' + project,
         function(rawdata) {
-			$("#overviewHeader").html("Project: " + rawdata.Name);
+			$("#overviewHeader").html(rawdata.Name + ': Status overview');
 			// $("#overviewPrioScore").html("Priority: " + rawdata.PrioScore);
 			$("#overviewDeadline").html("Deadline: " + rawdata.Deadline);
 			$("#overviewETA").html("ETA: " + rawdata.ETA);
@@ -262,8 +262,16 @@ function initJobTable(url) {
                 "data": "URLS",
                 "title": "Level2 data",
                 "render": function ( data, type, full, meta ) {
-                    return '<a href="' + getLevel2URI(data) + '" ' +
-                           'alt="' + data["URL-Output"] + '">View output</a>';
+                    if (data['URL-Result']) {
+                        return '<a target="_blank" href="' +
+                            data["URL-Result"] + '" ' +
+                            'alt="' + data["URL-Output"] +
+                            '">View result</a>';
+                    }
+                    else {
+                        return '<a target="_blank" alt="' +
+                            data["URL-Output"] + '">View result</a>';
+                    }
                 },
  				"defaultContent": "<i>N/A</i>",
             },
@@ -283,7 +291,7 @@ function initJobTable(url) {
 
         } else {
             $.getJSON(url, function (data) {
-                row.child(data.Output.replace(/\n/g, '<br>')).show();
+                row.child('<pre>' + data.Output + '</pre>').show();
                 tr.addClass('shown');
             });
         }

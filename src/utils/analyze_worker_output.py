@@ -129,13 +129,19 @@ def count_trigrams(txts):
     the total number of texts
     """
     tricount = Counter()
+    N = None
     for N, txt in enumerate(txts):
         tricount.update(get_output_trigrams(txt))
-    return tricount, N + 1
+    if N is None:
+        return tricount, 0
+    else:
+        return tricount, N + 1
 
 
 def get_trigram_prob(txts):
     """Return dict with {trigram: probability}"""
     count, N = count_trigrams(txts)
+    if not N:
+        return {}
     N = float(N)
     return {tri: n/N for tri, n in count.iteritems()}

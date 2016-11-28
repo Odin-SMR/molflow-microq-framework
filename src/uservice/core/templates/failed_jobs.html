@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="jumbotron">
+         <h1> Hermod µService Portal</h1>
+    </div>
+
+    {% if data %}
+        {% if data|string() is equalto "False" %}
+            <i class="fa fa-tachometer"></i>
+        {% endif %}
+    {% endif %}
+<div class="container-fluid">
+  <div class="row">
+        <a href="/{{ data.project.id }}">Back to status overview</a>
+        <h2 id="failedHeader">{{ data.project.name }}: Failed jobs</h2>
+        <div id="instructionsFailed">
+            <p>
+              Below is a table with console output (<i>stdout/stderr</i>)
+              lines from the processing of the jobs that have failed in this
+              project. The lines are sorted after how interesting they seem
+              to be (represented by 'Score'), so the interesting lines
+              should be in the top.
+            </p>
+            <p>
+              Clicking on a row in the output lines table will display all
+              lines that occur in the same group of failed jobs.
+            </p>
+            <p>
+              Click on the "Show jobs" link to display a table with the
+              corresponding failed jobs. Clicking on a row in the resulting
+              jobs table will display the full console output
+              (<i>StdOut/StdErr</i>) for that job.
+            </p>
+            <p>
+              Both tables can be searched and sorted.
+            </p>
+        </div>
+
+        <h3>Console output lines</h3>
+
+        <div class="table-responsive">
+            <table id="linesTable" class="table table-striped">
+                <!-- empty table -->
+            </table>
+        </div>
+    </div>
+    <div class="row">
+      <h3 id="jobTableHeader"></h3>
+      <h5 id="jobTableInfo"></h5>
+      <div class="table-responsive">
+        <table id="jobTable" class="table table-striped">
+          <!-- empty table -->
+        </table>
+      </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+    <script type="text/javascript">
+        // When the document is ready
+        $(document).ready(function () {
+            initFailedJobs('{{ data.project.id }}');
+        });
+    </script>
+{% endblock %}
