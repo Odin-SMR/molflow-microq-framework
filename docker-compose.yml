@@ -6,7 +6,7 @@
 #    - POSTGRES_PASSWORD:test
 
 webapi:
-  image: docker2.molflow.com/odin/microq:latest
+  build: .
   ports:
     - 5000:5000
   environment:
