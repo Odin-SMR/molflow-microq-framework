@@ -260,17 +260,13 @@ function initJobTable(url) {
             },
             {
                 "data": "URLS",
-                "title": "Level2 data",
+                "title": "Processing result",
                 "render": function ( data, type, full, meta ) {
                     if (data['URL-Result']) {
                         return '<a target="_blank" href="' +
                             data["URL-Result"] + '" ' +
-                            'alt="' + data["URL-Output"] +
+                            'alt="' + data["URL-Result"] +
                             '">View result</a>';
-                    }
-                    else {
-                        return '<a target="_blank" alt="' +
-                            data["URL-Output"] + '">View result</a>';
                     }
                 },
  				"defaultContent": "<i>N/A</i>",
@@ -313,27 +309,4 @@ function clearJobTable() {
     table = $('#jobTable').DataTable();
     table.clear();
     table.draw();
-}
-
-
-// Guess the Level2 URI from the Level1 URI and metadata:
-//  from:
-//      http://odin.rss.chalmers.se/rest_api/v4/l1_log/21/1352690456/
-//  and
-//      http://malachite.rss.chalmers.se:8080/rest_api/v4/MESOVDS4/jobs/21:1352690456/output
-//  to:
-//      http://odin.rss.chalmers.se/rest_api/v4/level2/MESOVDS4/21/1352690456/
-function getLevel2URI(data) {
-    var project;
-    var uri;
-
-    data["URL-Output"].split('/').forEach(function(part, index, parts) {
-        if (part == "rest_api") {
-            project = parts[index + 2];
-        }
-    });
-
-    uri = data["URL-Input"].replace(/l1_log/, 'level2/' + project);
-
-    return uri;
 }

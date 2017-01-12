@@ -8,14 +8,7 @@ body {
     padding-top: 0px;
   }
 */
-}
 
-
-img.loadingsql {
-    height: 600px;
-    width: 800px;
-    background: transparent url(/static/images/odin-loader.gif) no-repeat scroll center center;
-}
 .plotter {
     height: 60px;
     width: 80%;
