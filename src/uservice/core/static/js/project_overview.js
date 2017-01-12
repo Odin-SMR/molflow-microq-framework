@@ -265,8 +265,11 @@ function initJobTable(url) {
                     if (data['URL-Result']) {
                         return '<a target="_blank" href="' +
                             data["URL-Result"] + '" ' +
-                            'alt="' + data["URL-Result"] +
+                            'alt="' + data["URL-Output"] +
                             '">View result</a>';
+                    }
+                    else {
+                        return '<a alt="' + data['URL-Output'] + '"></a>';
                     }
                 },
  				"defaultContent": "<i>N/A</i>",
