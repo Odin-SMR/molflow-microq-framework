@@ -52,12 +52,12 @@ def dockercompose():
         try:
             r = requests.get(
                 'http://localhost:5000/rest_api/v4/projects',
-                timeout=1)
+                timeout=5)
             if r.status_code == 200:
                 break
             else:
                 sleep(1)
-        except requests.ConnectionError:
+        except:
             sleep(1)
         if time() > start_wait + max_wait:
             call_docker_compose('stop', root_path)
