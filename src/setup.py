@@ -1,8 +1,8 @@
-""" Hermod uService """
+""" Molflow uService """
 from setuptools import setup
 
 setup(
-    name='Hermod uService',
+    name='Molflow uService',
     version='1.0',
     long_description=__doc__,
     packages=['uservice', 'uservice.views', 'utils'],

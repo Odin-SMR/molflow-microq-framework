@@ -2,9 +2,6 @@ from debian:jessie
 run apt-get update && apt-get install -y \
     python-dev \
     python-pip \
-    python-pygresql \
-    python-psycopg2 \
-    curl \
     --no-install-recommends && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

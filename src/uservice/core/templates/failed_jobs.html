@@ -1,16 +1,6 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div class="container">
-    <div class="jumbotron">
-         <h1> Hermod µService Portal</h1>
-    </div>
-
-    {% if data %}
-        {% if data|string() is equalto "False" %}
-            <i class="fa fa-tachometer"></i>
-        {% endif %}
-    {% endif %}
 <div class="container-fluid">
   <div class="row">
         <a href="/{{ data.project.id }}">Back to status overview</a>

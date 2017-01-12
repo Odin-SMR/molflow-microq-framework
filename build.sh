@@ -4,5 +4,5 @@
 
 set -e
 
-docker build -t docker2.molflow.com/odin/microq .
-docker push docker2.molflow.com/odin/microq
+docker build -t docker2.molflow.com/devops/microq .
+docker push docker2.molflow.com/devops/microq
