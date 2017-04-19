@@ -1,3 +1,3 @@
-FROM docker2.molflow.com/devops/hermod_mysql
+FROM mysql:latest
 
-COPY example_data/data_dump.sql /var/lib/mysql/data_dump.sql
+COPY example_data/data_dump.sql /docker-entrypoint-initdb.d/
