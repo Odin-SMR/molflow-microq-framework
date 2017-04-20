@@ -3,7 +3,7 @@ from os import environ
 from flask import Flask, g, request, abort, jsonify, url_for, make_response
 from flask_sqlalchemy import SQLAlchemy
 
-from uservice.core.users import get_user_db, auth
+from uservice.core.users import User, auth, db
 from uservice.views.basic_views import (
     ListProjects, ListJobs, CountJobs, FetchNextJob, BasicView, FetchJobPrio,
     AnalyzeFailedJobs)
@@ -141,8 +141,7 @@ app.config['SQLALCHEMY_POOL_RECYCLE'] = 600
 
 
 # extensions
-user_db = SQLAlchemy(app)
-User = get_user_db(user_db, app)
+db.init_app(app)
 DB_INITIALIZED = False
 
 
@@ -156,8 +155,8 @@ def _add_user(username, password):
         return None, "User already exist"
     user = User(username=username)
     user.hash_password(password)
-    user_db.session.add(user)
-    user_db.session.commit()
+    db.session.add(user)
+    db.session.commit()
     return user.id, None
 
 
@@ -166,12 +165,13 @@ def _init_db():
     if DB_INITIALIZED:
         return
     try:
-        user_db.create_all()
+        db.create_all()
         _add_user(environ['USERVICE_ADMIN_USER'],
                   environ['USERVICE_ADMIN_PASSWORD'])
         DB_INITIALIZED = True
     except:
         abort(503)
+
 
 app.before_request(_init_db)
 
@@ -280,8 +280,8 @@ def delete_user(id):
     user = User.query.get(id)
     if not user:
         abort(404)
-    user_db.session.delete(user)
-    user_db.session.commit()
+    db.session.delete(user)
+    db.session.commit()
     return '', 204
 
 
