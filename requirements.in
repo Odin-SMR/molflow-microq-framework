@@ -8,6 +8,9 @@ sqlalchemy
 sqlalchemy-migrate
 pymysql
 jsonschema
+functools32==3.2.3-2  # this is a temporary fix and should be removed when
+                      # fixed upstream jsonschema pulls in a version that
+                      # is not publicly available
 jsl
 ConcurrentLogHandler
 python-dateutil

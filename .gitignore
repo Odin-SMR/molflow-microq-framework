@@ -11,3 +11,4 @@ deployment/uworker/packer_cache/
 deployment/uworker/packer_virtualbox-iso_virtualbox.box
 deployment/uworker/.vagrant/
 env
+result.xml
