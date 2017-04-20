@@ -1,6 +1,5 @@
 import urllib
 from datetime import datetime, timedelta
-
 import requests
 import pytest
 
@@ -69,14 +68,12 @@ class TestAdmin(BaseSystemTest):
         # Try to add with empty username
         r = requests.post(self._apiroot + "/admin/users",
                           auth=(self._adminuser, self._adminpw),
-                          headers={'Content-Type': "application/json"},
                           json={"username": "", "password": "sqrrl"})
         self.assertEqual(r.status_code, 400)
 
         # Try to add a valid user
         r = requests.post(self._apiroot + "/admin/users",
                           auth=(self._adminuser, self._adminpw),
-                          headers={'Content-Type': "application/json"},
                           json={"username": "myworker", "password": "sqrrl"})
         self.assertEqual(r.status_code, 201)
         userid = r.json()['userid']
@@ -84,14 +81,12 @@ class TestAdmin(BaseSystemTest):
         # Try to add same user again
         r = requests.post(self._apiroot + "/admin/users",
                           auth=(self._adminuser, self._adminpw),
-                          headers={'Content-Type': "application/json"},
                           json={"username": "myworker", "password": "sqrrl"})
         self.assertEqual(r.status_code, 400)
 
         # Try to add new user with none admin user
         r = requests.post(self._apiroot + "/admin/users",
                           auth=("myworker", "sqrrl"),
-                          headers={'Content-Type': "application/json"},
                           json={"username": "other", "password": "sqrrl"})
         self.assertEqual(r.status_code, 403)
 
@@ -120,13 +115,11 @@ class TestAuthentication(BaseWithWorkerUser):
         """Test authenticating by user and password"""
         r = requests.put(self._apiroot + "/v4/project/jobs/42/status",
                          json={"Status": "42"},
-                         headers={'Content-Type': "application/json"},
                          auth=(self._username, self._password))
         self.assertEqual(r.status_code, 200)
 
         r = requests.put(self._apiroot + "/v4/project/jobs/42/status",
                          json={"Status": "42"},
-                         headers={'Content-Type': "application/json"},
                          auth=("worker1", "sqd"))
         self.assertEqual(r.status_code, 401)
 
@@ -137,7 +130,6 @@ class TestAuthentication(BaseWithWorkerUser):
         token = r0.json()["token"]
         r1 = requests.put(self._apiroot + "/v4/project/jobs/42/status",
                           json={"Status": "42"},
-                          headers={'Content-Type': "application/json"},
                           auth=(token, ""))
         self.assertEqual(r0.status_code, 200)
         self.assertEqual(r1.status_code, 200)
@@ -561,12 +553,10 @@ class TestJobViews(BaseWithWorkerUser):
         job = job.json()
         r = requests.put(job["Job"]["URLS"]["URL-status"],
                          json={"BadStatus": "Testing status update."},
-                         headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 400)
         r = requests.put(job["Job"]["URLS"]["URL-status"],
                          json={"Status": "Testing status update."},
-                         headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
 
@@ -633,12 +623,10 @@ class TestJobViews(BaseWithWorkerUser):
         job = job.json()
         r = requests.put(job["Job"]["URLS"]["URL-output"],
                          json={"BadOutput": "Testing output update."},
-                         headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 400)
         r = requests.put(job["Job"]["URLS"]["URL-output"],
                          json={"Output": "Testing output update."},
-                         headers={'Content-Type': "application/json"},
                          auth=self._auth)
         self.assertEqual(r.status_code, 200)
 

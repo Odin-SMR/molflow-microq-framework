@@ -3,7 +3,7 @@ from os import environ
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-_engine = _session = None
+_engine = _db_session = None
 
 
 class SqlDB(object):
@@ -13,7 +13,13 @@ class SqlDB(object):
         if not _engine:
             dburl = environ['USERVICE_DATABASE_URI']
             _engine = create_engine(
-                dburl, convert_unicode=True, pool_size=30, pool_recycle=3600)
+                dburl,
+                convert_unicode=True,
+                pool_size=30,
+                max_overflow=0,
+                pool_timeout=180,
+                pool_recycle=600
+            )
             _db_session = scoped_session(
                 sessionmaker(autocommit=True,
                              autoflush=True,
