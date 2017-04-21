@@ -3,7 +3,8 @@
 
 // Make a list from an array:
 function objectAsList(arr) {
-    list = "<ul>";
+    'use strict';
+    var list = '<ul>';
 
     for (var key in arr) {
         list += "<li>" + key + ": " + arr[key] + "</li>";
@@ -15,6 +16,7 @@ function objectAsList(arr) {
 
 // Initialise the project overview, both plot and table:
 function initProjectOverview(project) {
+    'use strict';
     var uri;
 
     if (project === '') {
@@ -221,46 +223,60 @@ function initJobTable(url) {
             {
                 "data": "Id",
                 "title": "Job ID",
- 				"defaultContent": "<i>N/A</i>",
+ 				        "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Type",
                 "title": "Type",
- 				"defaultContent": "<i>N/A</i>",
+ 				        "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Worker",
                 "title": "Worker",
- 				"defaultContent": "<i>N/A</i>",
+ 				        "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Status",
                 "title": "Status",
- 				"defaultContent": "<i>N/A</i>",
+         				"defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Added",
                 "title": "Added",
- 				"defaultContent": "<i>N/A</i>",
+ 				        "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Claimed",
                 "title": "Claimed",
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Finished",
                 "title": "Finished",
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "Failed",
                 "title": "Failed",
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
+            },
+            {
+                "data": "Claimed",
+                "title": "Duration",
+                "render": function(data, type, full, meta) {
+                    if (full.Finished !== null) {
+                        return moment(full.Finished).diff(data, 'seconds');
+                    } else if (full.Failed !== null) {
+                        return moment(full.Failed).diff(data, 'seconds');
+                    } else {
+                        return;
+                    }
+                },
+                "defaultContent": "<i>N/A</i>",
             },
             {
                 "data": "URLS",
-                "title": "Processing result",
+                "title": "Results",
                 "render": function ( data, type, full, meta ) {
                     if (data['URL-Result']) {
                         return '<a target="_blank" href="' +
@@ -272,7 +288,7 @@ function initJobTable(url) {
                         return '<a alt="' + data['URL-Output'] + '"></a>';
                     }
                 },
- 				"defaultContent": "<i>N/A</i>",
+                "defaultContent": "<i>N/A</i>",
             },
         ],
         "paging":   true,
