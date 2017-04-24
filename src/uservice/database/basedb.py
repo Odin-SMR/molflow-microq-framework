@@ -24,6 +24,10 @@ class DBError(Exception):
     pass
 
 
+class DBConflictError(DBError):
+    pass
+
+
 class BaseJobDatabaseAPI(object):
     """Base API to a database.
 
@@ -63,8 +67,19 @@ class BaseJobDatabaseAPI(object):
         fields = fields or self.PUBLIC_FIELDS
         return self._get_job(job_id, fields)
 
+    def insert_job_if_not_duplicate(self, job_id, job_data):
+        if self.job_exists(job_id):
+            existing_job = self.get_job(job_id, job_data.keys())
+            if job_data == existing_job:
+                pass
+            else:
+                raise DBConflictError(
+                    "A job with id {} already exists.".format(job_id))
+        else:
+            self.insert_job(job_id, job_data)
+
     def _get_job(self, job_id, fields):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_jobs(self, match=None, start_time=None, end_time=None,
                  time_field=None, limit=None, fields=None):

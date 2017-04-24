@@ -23,13 +23,18 @@ disable = pytest.mark.skipif(  # pylint: disable=invalid-name
 )
 
 
+APIROOT = "http://localhost:5000/rest_api"
+ADMINUSER = 'admin'
+ADMINPW = 'sqrrl'
+
+
 class BaseSystemTest(unittest.TestCase):
 
     TEST_URL = 'http://example.com'
 
-    _apiroot = "http://localhost:5000/rest_api"
-    _adminuser = 'admin'
-    _adminpw = 'sqrrl'
+    _apiroot = APIROOT
+    _adminuser = ADMINUSER
+    _adminpw = ADMINPW
     _project = 'project'
     _username = 'worker1'
     _password = 'sqrrl'

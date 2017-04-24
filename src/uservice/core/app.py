@@ -2,11 +2,13 @@ from os import environ
 
 from flask import Flask, g, request, abort, jsonify, url_for, make_response
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.exceptions import HTTPException
 
 from uservice.core.users import User, auth, db
 from uservice.views.basic_views import (
-    ListProjects, ListJobs, CountJobs, FetchNextJob, BasicView, FetchJobPrio,
+    ListProjects, CountJobs, FetchNextJob, BasicView, FetchJobPrio,
     AnalyzeFailedJobs)
+from uservice.views.listjobs import ListJobs
 from uservice.views.job_views import JobClaim, JobStatus, JobOutput
 from uservice.views.project_views import ProjectStatus
 from uservice.views.site_views import (
@@ -183,54 +185,12 @@ def close_db(error=None):
 
 
 # error handling
-@app.errorhandler(400)
-def bad_request(error):
-    return make_response(jsonify({'error': 'Bad request'}), 400)
+def handle_error(error):
+    return make_response(jsonify(error=error.description), error.code)
 
 
-@app.errorhandler(401)
-def unauthorized(error):
-    return make_response(jsonify({'error': 'Unauthorized'}), 401)
-
-
-@app.errorhandler(403)
-def forbidden(error):
-    return make_response(jsonify({'error': 'Forbidden'}), 403)
-
-
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'error': 'Not found'}), 404)
-
-
-@app.errorhandler(405)
-def method_not_allowed(error):
-    return make_response(jsonify({'error': 'Method not allowed'}), 405)
-
-
-@app.errorhandler(409)
-def conflict(error):
-    return make_response(jsonify({'error': 'Conflict'}), 409)
-
-
-@app.errorhandler(415)
-def unsupported_media_type(error):
-    return make_response(jsonify({'error': 'Unsupported media type'}), 415)
-
-
-@app.errorhandler(500)
-def internal_server_error(error):
-    return make_response(jsonify({'error': 'Internal server error'}), 500)
-
-
-@app.errorhandler(501)
-def not_implemented(error):
-    return make_response(jsonify({'error': 'Not implemented'}), 501)
-
-
-@app.errorhandler(503)
-def service_unavailable(error):
-    return make_response(jsonify({'error': 'Service unavailable'}), 503)
+for cls in HTTPException.__subclasses__():
+    app.register_error_handler(cls, handle_error)
 
 
 # user admininstration and authentication
