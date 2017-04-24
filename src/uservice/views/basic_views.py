@@ -280,97 +280,6 @@ def make_pretty_job(job, project):
     return job
 
 
-class ListJobs(BasicProjectView):
-    """View for listing jobs as JSON object"""
-
-    def _get_view(self, version, project):
-        """
-        Return a JSON object with a list of jobs with URIs for
-        getting data etc.
-        """
-        job_type = request.args.get('type')
-        status = request.args.get('status')
-        worker = request.args.get('worker')
-        start = request.args.get('start')
-        end = request.args.get('end')
-
-        match = {}
-        if job_type:
-            match['type'] = job_type
-        if worker:
-            match['worker'] = worker
-        if status:
-            status = status.upper()
-            if status not in JOB_STATES.all_values:
-                return abort(400, 'Unsupported status: %r' % status)
-            match['current_status'] = status
-        if start:
-            try:
-                start = parse_datetime(start)
-            except ValueError:
-                return abort(400, 'Bad time format: %r' % start)
-        if end:
-            try:
-                end = parse_datetime(end)
-            except ValueError:
-                return abort(400, 'Bad time format: %r' % end)
-
-        db = self._get_jobs_database(project)
-        if start or end:
-            if not status:
-                return abort(400, ('Param @start and @end can only be used '
-                                   'together with @status'))
-            match.pop('current_status')
-            if status == JOB_STATES.claimed:
-                fun = db.get_claimed_jobs
-            elif status == JOB_STATES.finished:
-                fun = db.get_finished_jobs
-            elif status == JOB_STATES.failed:
-                fun = db.get_failed_jobs
-            else:
-                return abort(400, 'Unsupported status: %r' % status)
-        else:
-            fun = db.get_jobs
-        jobs = list(fun(match=match, start_time=start, end_time=end,
-                        fields=db.PUBLIC_LISTING_FIELDS))
-
-        for job in jobs:
-            make_pretty_job(job, project)
-
-        return jsonify(Version=version, Project=project, Jobs=jobs,
-                       Status=status, Start=fix_timestamp(start),
-                       End=fix_timestamp(end), Worker=worker)
-
-    def _post_view(self, version, project):
-        """
-        Used to add jobs to the database.
-        """
-        job = request.json
-        fields = set(job.keys())
-        missing_required = SqlJobDatabase.REQUIRED_FIELDS - fields
-        if missing_required:
-            return abort(
-                400, 'Missing required fields: {}'.format(missing_required))
-        unallowed = fields - SqlJobDatabase.SET_BY_USER
-        if unallowed:
-            return abort(
-                400, ('These fields does not exist or are for internal use: {}'
-                      ''.format(list(unallowed))))
-        job_id = job['id']
-        job_db = self._get_jobs_database(project)
-        if job_db.job_exists(job_id):
-            return abort(409, 'Job already exists')
-        now = request.args.get('now')
-        if now:
-            job['added_timestamp'] = parse_datetime(now)
-        job_db.insert_job(job_id, job)
-        projects_db = self._get_projects_database()
-        if not projects_db.job_added(project):
-            projects_db.insert_project(project, g.user.username)
-            projects_db.job_added(project)
-        return jsonify(Version=version, Project=project, ID=job_id), 201
-
-
 class AnalyzeFailedJobs(BasicProjectView):
     """View for listing processing output lines for failed jobs
     as JSON object
@@ -499,7 +408,7 @@ class CountJobs(BasicProjectView):
                        End=fix_timestamp(end), Counts=counts)
 
 
-class FetchNextJob(ListJobs, FetchJobBase):
+class FetchNextJob(BasicProjectView, FetchJobBase):
     """View for fetching data needed by the worker for the next job
     in the queue.
     """
