@@ -1,7 +1,7 @@
 webapi:
   build: .
   ports:
-    - 5000:5000
+    - 127.0.0.1:5000:5000
   environment:
     - USERVICE_DATABASE_URI=mysql+pymysql://testuser:secret@mysqlhost/smr
     - USERVICE_ADMIN_USER=admin
@@ -19,4 +19,4 @@ mysqlhost:
     - MYSQL_USER=testuser
     - MYSQL_PASSWORD=secret
   ports:
-    - localhost:3306:3306
+    - 127.0.0.1:3306:3306
