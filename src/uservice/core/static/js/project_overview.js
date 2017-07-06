@@ -265,11 +265,13 @@ function initJobTable(url) {
                 "title": "Duration",
                 "render": function(data, type, full, meta) {
                     if (full.Finished !== null) {
-                        return moment(full.Finished).diff(data, 'seconds');
+                        return moment(full.Finished).diff(data, 'seconds') +
+                            's';
                     } else if (full.Failed !== null) {
-                        return moment(full.Failed).diff(data, 'seconds');
+                        return moment(full.Failed).diff(data, 'seconds') +
+                            's';
                     } else {
-                        return;
+                        return '<i>N/A</i>';
                     }
                 },
                 "defaultContent": "<i>N/A</i>",
@@ -285,7 +287,8 @@ function initJobTable(url) {
                             '">View result</a>';
                     }
                     else {
-                        return '<a alt="' + data['URL-Output'] + '"></a>';
+                        return '<a alt="' + data['URL-Output'] +
+                            '"></a><i>N/A</i>';
                     }
                 },
                 "defaultContent": "<i>N/A</i>",
@@ -296,19 +299,25 @@ function initJobTable(url) {
         "info":     false,
     });
 
-    $('#jobTable tbody').on('click', 'tr', function () {
+    $('#jobTable tbody').on('click', 'tr td:nth-child(-n+9)', function () {
         var tr = $(this).closest('tr');
         var row = table.row(tr);
-        var url = $(this).children().eq(8).find('a').attr("alt");
+        var url = $(tr).children().last().find('a').attr("alt");
         if (row.child.isShown()) {
             row.child.hide();
             tr.removeClass('shown');
 
         } else {
-            $.getJSON(url, function (data) {
-                row.child('<pre>' + data.Output + '</pre>').show();
-                tr.addClass('shown');
-            });
+            $.getJSON(url)
+                .done(function (data) {
+                    row.child('<pre>' + data.Output + '</pre>').show();
+                })
+                .fail(function(data) {
+                    row.child('<em> Request to "' + url + '" failed.</em>');
+                })
+                .always(function(data) {
+                    tr.addClass('shown');
+                });
         }
     });
 }

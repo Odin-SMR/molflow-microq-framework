@@ -57,7 +57,7 @@ function initFailedJobs(project) {
     });
     table.order([0, 'desc']).draw();
 
-    $('#linesTable tbody').on('click', 'tr td:nth-child(2)', function () {
+    $('#linesTable tbody').on('click', 'tr td:nth-child(-n+3)', function () {
         var tr = $(this).closest('tr');
         var row = table.row(tr);
         var lines = ROWNR2LINES[row.index()];
