@@ -5,6 +5,7 @@ from operator import itemgetter
 
 RE_PREFIX = re.compile(u'^.*? - (STDOUT|STDERR|EXECUTOR)\:\s*', re.U)
 RE_SPACE = re.compile(u'\s+', re.U)
+RE_URITRUNCATE = re.compile(u'^.*https?://[^?]+\\?', re.U)
 
 
 def rank_errors(jobs):
@@ -38,14 +39,16 @@ def rank_errors(jobs):
     lines = {}
     for job in jobs:
         output = job.pop('worker_output')
-        for line in iter_unique_lines(output):
+        for line, clean_line in iter_unique_lines(output):
             if line in lines:
                 lines[line]['jobids'].append(job['id'])
             else:
                 lines[line] = {
                     'entropy': trigram_entropy(line, tri_probs),
+                    'clean_line': clean_line,
                     'jobids': [job['id']]}
     ranked = {}
+
     N = float(len(lines))
     for line, data in lines.iteritems():
         # log entropy to ensure that crazy lines with extremely high entropy
@@ -54,15 +57,16 @@ def rank_errors(jobs):
         job_ids_key = ' '.join(sorted(data['jobids']))
         if job_ids_key in ranked:
             item = ranked[job_ids_key]
-            item['common_lines'].append({'line': line, 'score': score})
+            item['common_lines'].append(
+                {'line': data['clean_line'], 'score': score})
             if score > item['score']:
                 item['score'] = score
-                item['line'] = line
+                item['line'] = data['clean_line']
         else:
             ranked[job_ids_key] = {
                 'score': score,
-                'line': line,
-                'common_lines': [{'line': line, 'score': score}],
+                'line': data['clean_line'],
+                'common_lines': [{'line': data['clean_line'], 'score': score}],
                 'jobids': data['jobids']}
 
     ranked = sorted(ranked.values(), key=itemgetter('score'), reverse=True)
@@ -94,29 +98,38 @@ def remove_prefix(line):
     return RE_PREFIX.sub(u'', line)
 
 
-def clean_line(line):
+def get_clean_line(line):
     line = remove_prefix(line)
     line = line.strip()
     return RE_SPACE.sub(u' ', line)
+
+
+def get_compare_line(line):
+
+    match = RE_URITRUNCATE.match(line)
+    if match:
+        return match.group(0)
+    return line
 
 
 def iter_unique_lines(output):
     """Generate cleaned lines from the job output text"""
     seen = set()
     for line in output.split('\n'):
-        line = clean_line(line)
-        if not line:
+        clean_line = get_clean_line(line)
+        if not clean_line:
             continue
-        if line in seen:
+        compare_line = get_compare_line(clean_line)
+        if compare_line in seen:
             continue
-        seen.add(line)
-        yield line
+        seen.add(compare_line)
+        yield compare_line, clean_line
 
 
 def get_output_trigrams(txt):
     """Generate unique trigrams in a job output text"""
     seen = set()
-    for line in iter_unique_lines(txt):
+    for line, _ in iter_unique_lines(txt):
         for tri in get_trigrams(line):
             if tri in seen:
                 continue
