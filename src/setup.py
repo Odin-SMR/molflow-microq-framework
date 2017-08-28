@@ -5,7 +5,12 @@ setup(
     name='Molflow uService',
     version='1.0',
     long_description=__doc__,
-    packages=['uservice', 'uservice.views', 'utils'],
+    packages=['uservice', 'uservice.views', 'utils',
+              'projectsgenerator'],
+    entry_points={
+        'console_scripts': [
+            'qsmrprojects = projectsgenerator.qsmrprojects:main']
+    },
     include_package_data=True,
     zip_safe=False,
     install_requires=[
@@ -21,6 +26,7 @@ setup(
         'jsonschema',
         'jsl',
         'ConcurrentLogHandler',
-        'python-dateutil'
+        'python-dateutil',
+        'requests',
     ]
 )
