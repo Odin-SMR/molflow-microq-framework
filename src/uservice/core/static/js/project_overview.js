@@ -264,15 +264,7 @@ function initJobTable(url) {
                 "data": "Claimed",
                 "title": "Duration",
                 "render": function(data, type, full, meta) {
-                    if (full.Finished !== null) {
-                        return moment(full.Finished).diff(data, 'seconds') +
-                            's';
-                    } else if (full.Failed !== null) {
-                        return moment(full.Failed).diff(data, 'seconds') +
-                            's';
-                    } else {
-                        return '<i>N/A</i>';
-                    }
+                    return getDuration(data, full.Finished, full.Failed);
                 },
                 "defaultContent": "<i>N/A</i>",
             },
@@ -323,6 +315,12 @@ function initJobTable(url) {
 }
 
 
+// Compare if date1 is before date2
+function compareTwoDates(date1, date2){
+    return new Date(date2) > new Date(date1);
+}
+
+
 // Update the job info table:
 function updateJobTable(url) {
     var table;
@@ -338,3 +336,23 @@ function clearJobTable() {
     table.clear();
     table.draw();
 }
+
+
+// Get duration of job:
+function getDuration(Claimed, Finished, Failed) {
+    if (Finished !== null) {
+        if (compareTwoDates(Claimed, Finished)) {
+            return moment(Finished).diff(Claimed, 'seconds') +
+                's';
+        }
+    }
+    if (Failed !== null) {
+        if (compareTwoDates(Claimed, Failed)) {
+            return moment(Failed).diff(Claimed, 'seconds') +
+                's';
+        }
+    }
+    return '<i>N/A</i>';
+}
+
+
