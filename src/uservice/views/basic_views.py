@@ -4,8 +4,8 @@ import urllib
 from datetime import datetime
 from collections import defaultdict
 from operator import itemgetter
-
 from dateutil.parser import parse as parse_datetime
+from random import choice
 
 from flask import jsonify, abort as flask_abort, make_response, request, g
 from flask.views import MethodView
@@ -147,8 +147,11 @@ class FetchJobBase(object):
     def _get_unclaimed_job(self, version, project):
         db_jobs = self._get_jobs_database(project)
         try:
-            job = next(db_jobs.get_jobs(match={'claimed': False},
-                                        fields=self.JOB_FIELDS))
+            jobs = list(db_jobs.get_jobs(
+                match={'claimed': False},
+                fields=self.JOB_FIELDS,
+                limit=500))
+            job = choice(jobs)
         except StopIteration:
             return abort(404, 'No unclaimed jobs available')
         db_projects = self._get_projects_database()
