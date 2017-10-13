@@ -342,17 +342,13 @@ function clearJobTable() {
 function getDuration(Claimed, Finished, Failed) {
     if (Finished !== null) {
         if (compareTwoDates(Claimed, Finished)) {
-            return moment(Finished).diff(Claimed, 'seconds') +
-                's';
+            return moment(Finished).diff(Claimed, 'seconds');
         }
     }
     if (Failed !== null) {
         if (compareTwoDates(Claimed, Failed)) {
-            return moment(Failed).diff(Claimed, 'seconds') +
-                's';
+            return moment(Failed).diff(Claimed, 'seconds');
         }
     }
     return '<i>N/A</i>';
 }
-
-
