@@ -195,13 +195,13 @@ class ProjectsDB(object):
             return True
         return False
 
-    def job_added(self, project_id):
+    def job_added(self, project_id, added=1):
         """Report that a job was added to this project.
 
         Return False if the project does not exist.
         """
         return self.update_project(
-            project_id, last_added_timestamp=datetime.utcnow(), nr_added=1)
+            project_id, last_added_timestamp=datetime.utcnow(), nr_added=added)
 
     def job_claimed(self, project_id):
         """Report that a job in this project was claimed."""

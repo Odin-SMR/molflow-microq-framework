@@ -77,6 +77,8 @@ class BaseJobDatabaseAPI(object):
                     "A job with id {} already exists.".format(job_id))
         else:
             self.insert_job(job_id, job_data)
+            return 1
+        return 0
 
     def _get_job(self, job_id, fields):
         raise NotImplementedError

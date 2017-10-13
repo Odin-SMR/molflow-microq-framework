@@ -102,6 +102,7 @@ class TestAddJobs(object):
         job = {'id': '42', 'source_url': 'http://example.com/job'}
         session.post(project + '/jobs', json=job).raise_for_status()
         assert len(session.get(project + '/jobs').json()['Jobs']) == 1
+        assert session.get(project).json()['NrJobsAdded'] == 1
 
     @pytest.mark.usefixtures("dockercompose")
     def test_add_a_single_valid_job_with_now(self, session, project):
@@ -127,6 +128,7 @@ class TestAddJobs(object):
         response = session.post(project + '/jobs', json=job)
         assert response.status_code == 201
         assert len(session.get(project + '/jobs').json()['Jobs']) == 1
+        assert session.get(project).json()['NrJobsAdded'] == 1
 
     @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs(self, session, project):
@@ -136,6 +138,7 @@ class TestAddJobs(object):
         ]
         session.post(project + '/jobs', json=jobs).raise_for_status()
         assert len(session.get(project + '/jobs').json()['Jobs']) == 2
+        assert session.get(project).json()['NrJobsAdded'] == 2
 
     @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs_with_invalid_ones(self, session, project):
