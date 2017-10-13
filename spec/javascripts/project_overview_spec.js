@@ -45,7 +45,7 @@ describe("Javascript job duration calculator", function() {
         Failed = "2001-01-01T12:00:06Z";
         Finished = null;
 
-        expect(getDuration(Claimed, Finished, Failed)).toEqual("6s");
+        expect(getDuration(Claimed, Finished, Failed)).toEqual(6);
     });
 
     it("calculates duration between claimed and finished",
@@ -54,7 +54,7 @@ describe("Javascript job duration calculator", function() {
         Failed = null;
         Finished = "2001-01-01T12:00:06Z";
 
-        expect(getDuration(Claimed, Finished, Failed)).toEqual("6s");
+        expect(getDuration(Claimed, Finished, Failed)).toEqual(6);
     });
 
     it("understand that duration can not ne negative",
@@ -67,4 +67,3 @@ describe("Javascript job duration calculator", function() {
     });
 
 });
-
