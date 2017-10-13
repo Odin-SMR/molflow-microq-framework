@@ -91,12 +91,15 @@ class ListJobs(BasicProjectView):
             raise BadRequest(description=error.message)
 
         job_db = self._get_jobs_database(project)
-        self.check_for_conflicts_and_insert_one_new_job(job_db, job)
+        added_rows = self.check_for_conflicts_and_insert_one_new_job(
+            job_db, job)
 
         projects_db = self._get_projects_database()
-        if not projects_db.job_added(project):
-            projects_db.insert_project(project, g.user.username)
-            projects_db.job_added(project)
+        if added_rows != 0:
+            did_work = projects_db.job_added(project, added=added_rows)
+            if not did_work:
+                projects_db.insert_project(project, g.user.username)
+                projects_db.job_added(project, added=added_rows)
 
     def add_multiple_jobs(self, project, jobs):
 
@@ -106,19 +109,24 @@ class ListJobs(BasicProjectView):
             raise BadRequest(description=error.message)
 
         job_db = self._get_jobs_database(project)
-        self.check_for_conflicts_and_insert_new_jobs(job_db, jobs)
+        added_rows = self.check_for_conflicts_and_insert_new_jobs(job_db, jobs)
 
         projects_db = self._get_projects_database()
-        if not projects_db.job_added(project):
-            projects_db.insert_project(project, g.user.username)
-            projects_db.job_added(project)
+        if added_rows != 0:
+            did_work = projects_db.job_added(project, added=added_rows)
+            if not did_work:
+                projects_db.insert_project(project, g.user.username)
+                projects_db.job_added(project, added=added_rows)
 
     def check_for_conflicts_and_insert_new_jobs(self, job_db, jobs):
         job_db.db.session.begin()
         errors = []
+        added = 0
         for job_number, job in enumerate(jobs):
             try:
-                self.check_for_conflicts_and_insert_one_new_job(job_db, job)
+                added_row = self.check_for_conflicts_and_insert_one_new_job(
+                    job_db, job)
+                added = added + added_row
             except Conflict as error:
                 errors.append(
                     "Job#{}: {}".format(job_number, error.description))
@@ -126,15 +134,17 @@ class ListJobs(BasicProjectView):
             raise Conflict(description="\n".join(errors))
         else:
             job_db.db.session.commit()
+        return added
 
     def check_for_conflicts_and_insert_one_new_job(self, job_db, job):
         try:
             now = request.args.get('now')
             if now:
                 job['added_timestamp'] = parse_datetime(now)
-            job_db.insert_job_if_not_duplicate(job['id'], job)
+            rows = job_db.insert_job_if_not_duplicate(job['id'], job)
         except DBConflictError as error:
             raise Conflict(error.message)
+        return rows
 
 
 class ValidationError(Exception):
