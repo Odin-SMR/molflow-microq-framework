@@ -1,0 +1,19 @@
+version: "3"
+services:
+    uservice:
+        image: docker2.molflow.com/devops/microq:latest
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "2000k"
+                max-file: "5"
+        ports:
+            - 0.0.0.0:5000:5000
+        environment:
+            - MOLFLOW_MICRO_QUEUE=on
+            - USERV_API_PRODUCTION=yes
+            - USERVICE_DATABASE_URI=mysql+pymysql://${MYSQL_USER}:$MYSQL_PASS@${MYSQL_HOST}/${MYSQL_DB}
+            - USERVICE_ADMIN_USER=${MYSQL_ADMIN_USER}
+            - USERVICE_ADMIN_PASSWORD=${MYSQL_ADMIN_PASS}
+            - GUNICORN_CMD_ARGS=-w 8 -b 0.0.0.0:5000 -k gevent --timeout 180 
+        command: gunicorn uservice.core.app:app
