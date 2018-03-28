@@ -152,7 +152,7 @@ class FetchJobBase(object):
                 fields=self.JOB_FIELDS,
                 limit=500))
             job = choice(jobs)
-        except StopIteration:
+        except (StopIteration, IndexError):
             return abort(404, 'No unclaimed jobs available')
         db_projects = self._get_projects_database()
         project_data = db_projects.get_project(
