@@ -24,8 +24,8 @@ glob2==0.5
 greenlet==0.4.12
 gunicorn==19.7.1
 itsdangerous==0.24
-jasmine-core==2.5.2
-jasmine==2.5.0
+jasmine-core==3.1.0
+jasmine==3.1.0
 jinja2==2.9.6
 jsl==0.2.4
 jsonschema==2.6.0

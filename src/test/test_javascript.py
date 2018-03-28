@@ -9,5 +9,4 @@ def test_jasmine():
         $ pip install jasmine
         $ npm install phantomjs
     """
-    retval = subprocess.call(["jasmine-ci", "-l", "-b", "phantomjs"])
-    assert retval == 0
+    assert subprocess.call(["jasmine", "ci", "--browser", "phantomjs"]) == 0
