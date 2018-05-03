@@ -22,6 +22,7 @@ class ListJobs(BasicProjectView):
         worker = request.args.get('worker')
         start = request.args.get('start')
         end = request.args.get('end')
+        limit = request.args.get('limit', None)
 
         match = {}
         if job_type:
@@ -61,7 +62,7 @@ class ListJobs(BasicProjectView):
         else:
             fun = db.get_jobs
         jobs = list(fun(match=match, start_time=start, end_time=end,
-                        fields=db.PUBLIC_LISTING_FIELDS))
+                        fields=db.PUBLIC_LISTING_FIELDS, limit=limit))
 
         for job in jobs:
             make_pretty_job(job, project)
