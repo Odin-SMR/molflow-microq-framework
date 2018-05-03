@@ -58,7 +58,7 @@ function initProjectOverview(project) {
 			// Initialise overview plot and job table:
 			uri = rawdata.URLS["URL-DailyCount"];
 			updateProjectOverviewPlot(uri);
-			initJobTable(rawdata.URLS["URL-Jobs"] + "?status=FAILED");
+			initJobTable(rawdata.URLS['URL-Jobs'] + '?status=FAILED&limit=1000');
         }
     );
 
@@ -91,7 +91,7 @@ function initProjectOverview(project) {
 	$('#overviewPlot').bind("plotclick", function (event, pos, item) {
 		if ((item) && item.series.label != 'workers') {
 		    // Update table:
-			updateJobTable(item.series.URLS.own[item.dataIndex]);
+			updateJobTable(item.series.URLS.own[item.dataIndex] + '&limit=1000');
 
             // Update plot:
 		    if ($('#overviewPlot').hasClass("Daily")) {
@@ -118,17 +118,17 @@ function updateProjectOverviewPlot(uri) {
     var finished = [];
     var xticks = [];
     var PeriodType = "";
-	var URLS = {
-		failed: [],
-		claimed: [],
-		finished: [],
-		workers: [],
-		zoom: [],
-	};
-	var barWidth = {
-	    "Daily": 21600000, // 6 hours
-	    "Hourly":  900000, // 15 minutes
-	};
+    var URLS = {
+      failed: [],
+      claimed: [],
+      finished: [],
+      workers: [],
+      zoom: [],
+    };
+    var barWidth = {
+        "Daily": 21600000, // 6 hours
+        "Hourly":  900000, // 15 minutes
+    };
 
     $.getJSON(uri, function(rawdata) {
         $.each(rawdata.Counts, function (ind, val) {
