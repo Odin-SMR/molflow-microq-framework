@@ -1,4 +1,4 @@
--rrequirements.txt
+-rrequirements.in
 pytest
 requests
 coverage
