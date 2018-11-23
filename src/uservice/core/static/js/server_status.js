@@ -128,6 +128,11 @@ function initServerStatus() {
             */
             {
                 "data": "Id",
+                "title": "Tag",
+                "defaultContent": "<i>N/A</i>",
+            },
+            {
+                "data": "Id",
                 "title": "Project details",
                 "render": function ( data, type, full, meta ) {
                     return '<a href="/' + data + '">More...</a>';
