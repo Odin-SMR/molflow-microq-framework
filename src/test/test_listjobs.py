@@ -4,7 +4,7 @@ import requests
 
 from uservice.views.listjobs import (
     validate_json_job, validate_json_job_list, ValidationError)
-from test.testbase import APIROOT, ADMINUSER, ADMINPW, system
+from test.testbase import ADMINUSER, ADMINPW
 
 
 class TestJsonJobValidation(object):
@@ -80,7 +80,7 @@ class TestJsonJobValidation(object):
         assert str(excinfo.value) == expected_error
 
 
-@system
+@pytest.mark.system
 class TestAddJobs(object):
     @pytest.fixture
     def session(self):
@@ -89,22 +89,20 @@ class TestAddJobs(object):
         return requests_session
 
     @pytest.fixture
-    def project(self, session):
+    def project(self, session, microq_service):
         name = 'testproject'
-        url = APIROOT + '/v4/' + name
+        url = "{}/rest_api/v4/{}".format(microq_service, name)
         session.put(url).raise_for_status()
         yield url
         if session.head(url).status_code == 200:
             session.delete(url).raise_for_status()
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_single_valid_job(self, session, project):
         job = {'id': '42', 'source_url': 'http://example.com/job'}
         session.post(project + '/jobs', json=job).raise_for_status()
         assert len(session.get(project + '/jobs').json()['Jobs']) == 1
         assert session.get(project).json()['NrJobsAdded'] == 1
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_single_valid_job_with_now(self, session, project):
         job = {'id': '42', 'source_url': 'http://example.com/job'}
         params = {'now': '2000-01-01 10:00'}
@@ -112,7 +110,6 @@ class TestAddJobs(object):
         response.raise_for_status()
         assert len(session.get(project + '/jobs').json()['Jobs']) == 1
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_single_invalid_job(self, session, project):
         job = {}
         response = session.post(project + '/jobs', json=job)
@@ -121,7 +118,6 @@ class TestAddJobs(object):
         assert response.json() == {'error': expected_error}
         assert len(session.get(project + '/jobs').json()['Jobs']) == 0
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_the_same_job_twice(self, session, project):
         job = {'id': '42', 'source_url': 'http://example.com/job'}
         session.post(project + '/jobs', json=job).raise_for_status()
@@ -130,7 +126,6 @@ class TestAddJobs(object):
         assert len(session.get(project + '/jobs').json()['Jobs']) == 1
         assert session.get(project).json()['NrJobsAdded'] == 1
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs(self, session, project):
         jobs = [
             {'id': '41', 'source_url': 'http://example.com/job'},
@@ -140,7 +135,6 @@ class TestAddJobs(object):
         assert len(session.get(project + '/jobs').json()['Jobs']) == 2
         assert session.get(project).json()['NrJobsAdded'] == 2
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs_with_invalid_ones(self, session, project):
         jobs = [
             {'id': '41', 'source_url': 'http://example.com/job'},
@@ -156,7 +150,6 @@ class TestAddJobs(object):
         assert response.json() == {'error': expected_error}
         assert len(session.get(project + '/jobs').json()['Jobs']) == 0
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs_with_duplicated_id(self, session, project):
         jobs = [
             {'id': '41', 'source_url': 'http://example.com/job1'},
@@ -169,7 +162,6 @@ class TestAddJobs(object):
         assert response.json() == {'error': expected_error}
         assert len(session.get(project + '/jobs').json()['Jobs']) == 0
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs_with_duplicates(self, session, project):
         jobs = [
             {'id': '41', 'source_url': 'http://example.com/job1'},
@@ -180,7 +172,6 @@ class TestAddJobs(object):
         assert response.status_code == 201
         assert len(session.get(project + '/jobs').json()['Jobs']) == 2
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs_with_one_existing_id(self, session, project):
         job = {'id': '42', 'source_url': 'http://example.com/job'}
         session.post(project + '/jobs', json=job).raise_for_status()
@@ -194,7 +185,6 @@ class TestAddJobs(object):
         assert response.json() == {'error': expected_error}
         assert len(session.get(project + '/jobs').json()['Jobs']) == 1
 
-    @pytest.mark.usefixtures("dockercompose")
     def test_add_a_list_of_jobs_with_one_existing_job(self, session, project):
         job = {'id': '42', 'source_url': 'http://example.com/job'}
         session.post(project + '/jobs', json=job).raise_for_status()

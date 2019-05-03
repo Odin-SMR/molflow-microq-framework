@@ -3,99 +3,145 @@ import os
 import unittest
 import requests
 import pytest
+from types import StringTypes
 
+
+class _Any:
+    def __eq__(self, other):
+        return True
+
+
+class _AnyString:
+    def __eq__(self, other):
+        return isinstance(other, StringTypes)
+
+
+ANY = _Any()
+ANY_STRING = _AnyString()
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
-slow = pytest.mark.skipif(  # pylint: disable=invalid-name
-    not pytest.config.getoption("--runslow"),  # pylint: disable=no-member
-    reason="need --runslow option to run"
-)
 
-system = pytest.mark.skipif(  # pylint: disable=invalid-name
-    not pytest.config.getoption("--runsystem"),  # pylint: disable=no-member
-    reason="need --runsystem option to run"
-)
-
-disable = pytest.mark.skipif(  # pylint: disable=invalid-name
-    not pytest.config.getoption("--rundisabled"),  # pylint: disable=no-member
-    reason="need --rundisabled option to run"
-)
-
-
-APIROOT = "http://localhost:5000/rest_api"
 ADMINUSER = 'admin'
 ADMINPW = 'sqrrl'
+TEST_URL = 'http://example.com'
 
 
-class BaseSystemTest(unittest.TestCase):
-
-    TEST_URL = 'http://example.com'
-
-    _apiroot = APIROOT
+class ApiSession:
     _adminuser = ADMINUSER
     _adminpw = ADMINPW
     _project = 'project'
-    _username = 'worker1'
+    username = 'worker1'
     _password = 'sqrrl'
-    _token = None
-
     _test_jobs = [
-        {'id': '42', 'type': 'test_type',
-         'source_url': TEST_URL,
-         'target_url': TEST_URL}
+        {
+            'id': '42', 'type': 'test_type', 'source_url': TEST_URL,
+            'target_url': TEST_URL,
+        },
     ]
 
-    @classmethod
-    def tearDownClass(cls):
-        cls._delete_test_project()
-
-    @classmethod
-    def _delete_test_project(cls, project=None):
-        requests.delete(
-            cls._apiroot + '/v4/{}'.format(project or cls._project),
-            auth=(cls._token or cls._username, cls._password))
+    def __init__(self, microq_service):
+        self._apiroot = "{}/rest_api/v4".format(microq_service)
+        self._adminroot = "{}/rest_api/admin".format(microq_service)
+        self._tokenurl = "{}/rest_api/token".format(microq_service)
+        self._projects = []
+        self._jobs = []
+        self._users = []
+        self._token = None
 
     @property
-    def _auth(self):
+    def auth(self):
         if self._token:
             return (self._token, '')
-        return (self._username, self._password)
+        return (self.username, self._password)
 
-    @classmethod
-    def _insert_test_jobs(cls, project=None):
-        # TODO: Only inserting one job because authentication takes ~0.5 secs
-        for job in cls._test_jobs[:1]:
-            status_code = cls._insert_job(job, project=project)
+    @property
+    def token_auth(self):
+        return (self._token if self._token else '', '')
+
+    @property
+    def user_auth(self):
+        return (self.username, self._password)
+
+    @property
+    def admin_auth(self):
+        return (self._adminuser, self._adminpw)
+
+    def get_projects(self, options=None):
+        if options:
+            return requests.get("{}/projects?{}".format(
+                self._apiroot, options,
+            ))
+
+        return requests.get("{}/projects".format(self._apiroot))
+
+    def get_project_url(self, project=None):
+        if project is None:
+            project = self._project
+        return "{}/{}".format(self._apiroot, project)
+
+    def put_project(self, project=None, json=None):
+        if project not in self._projects:
+            self._projects.append(project)
+        return requests.put(
+            self.get_project_url(project), auth=self.auth, json=json,
+        )
+
+    def delete_projects(self):
+        while self._projects:
+            self.delete_project(self._projects[0])
+
+    def delete_project(self, project=None):
+        r = requests.delete(
+            self.get_project_url(project),
+            auth=self.auth,
+        )
+        self._projects.remove(project)
+        self._jobs = [j for j in self._jobs if j[0] != project]
+        return r
+
+    def get_project(self, project=None, options=None):
+        if options:
+            return requests.get("{}?{}".format(
+                self.get_project_url(project), options
+            ))
+
+        return requests.get(self.get_project_url(project))
+
+    def insert_test_jobs(self, project=None):
+        for job in self._test_jobs[:1]:
+            status_code = self.insert_job(job, project=project)
             assert status_code == 201, status_code
 
-    @classmethod
-    def _insert_job(cls, job, project=None):
+    def insert_job(self, job, project=None):
         """Insert job and set status"""
+        if project not in self._projects:
+            self._projects.append(project)
+        projecturl = self.get_project_url(project)
         job = job.copy()
         id = job['id']
-        worker = job.pop('worker', cls._username)
+        worker = job.pop('worker', self.username)
         processing_time = job.pop('processing_time', 0)
         added = job.pop('added_timestamp', None)
         claimed = job.pop('claimed_timestamp', None)
         finished = job.pop('finished_timestamp', None)
         failed = job.pop('failed_timestamp', None)
-        auth = (cls._token or cls._username, cls._password)
         job.pop('claimed', None)
         job.pop('current_status', None)
         r = requests.post(
-            cls._apiroot + '/v4/{}/jobs{}'.format(
-                project or cls._project,
-                ('?now=' + added) if added else ''),
-            json=job, auth=auth)
+            '{}/jobs{}'.format(
+                projecturl, '?now={}'.format(added) if added else ''
+            ),
+            json=job, auth=self.auth)
         if r.status_code != 201:
             return r.status_code
+        self._jobs.append((project, job['id']))
         if claimed:
             data = {'Worker': worker}
             r_ = requests.put(
-                cls._apiroot + '/v4/{}/jobs/{}/claim?now={}'.format(
-                    project or cls._project, id, claimed),
-                auth=auth, json=data)
+                '{}/jobs/{}/claim?now={}'.format(projecturl, id, claimed),
+                auth=self.auth, json=data,
+            )
             assert r_.status_code == 200, r_.status_code
         if finished or failed:
             if finished:
@@ -104,53 +150,114 @@ class BaseSystemTest(unittest.TestCase):
                 status = {'Status': 'FAILED'}
             status['ProcessingTime'] = processing_time
             r_ = requests.put(
-                cls._apiroot + '/v4/{}/jobs/{}/status?now={}'.format(
-                    project or cls._project, id, finished or failed),
-                auth=auth, json=status)
+                '{}/jobs/{}/status?now={}'.format(
+                    projecturl, id, finished or failed,
+                ),
+                auth=self.auth, json=status,
+            )
             assert r_.status_code == 200, r_.status_code
         return r.status_code
 
-    @classmethod
-    def _insert_worker_user(cls):
-        r = requests.post(cls._apiroot + "/admin/users",
-                          headers={'Content-Type': "application/json"},
-                          json={"username": cls._username,
-                                "password": cls._password},
-                          auth=(cls._adminuser, cls._adminpw))
-        assert r.status_code == 201, r.status_code
-        return r.json()['userid']
+    def get_project_jobs(self, options=None, project=None, use_auth=True):
+        if options:
+            url = "{}?{}".format(self.get_jobs_url(project), options)
+        else:
+            url = "{}".format(self.get_jobs_url(project))
 
-    @classmethod
-    def _get_worker_token(cls):
-        r = requests.get(cls._apiroot + "/token",
-                         auth=(cls._username, cls._password))
+        return requests.get(url, auth=self.auth if use_auth else None)
+
+    def fetch_project_job(self, options=None, project=None, use_auth=True):
+        if options:
+            url = "{}/fetch?{}".format(self.get_jobs_url(project), options)
+        else:
+            url = "{}/fetch".format(self.get_jobs_url(project))
+
+        return requests.get(url, auth=self.auth if use_auth else None)
+
+    def fetch_specific_job(self, job, project=None):
+        return requests.get(
+            "{}/{}/fetch".format(self.get_jobs_url(project), job),
+            auth=self.auth,
+        )
+
+    def fetch_job(self):
+        return requests.get(
+            "{}/projects/jobs/fetch".format(self._apiroot),
+            auth=self.auth,
+        )
+
+    def put_job_status(self, job, status, project=None, auth=None):
+        if auth is None:
+            auth = self.auth
+        url = "{}/{}/status".format(self.get_jobs_url(project), job)
+        return requests.put(url, json=status, auth=auth)
+
+    def get_jobs_url(self, project=None):
+        if project is None:
+            project = self._project
+        return "{}/{}/jobs".format(self._apiroot, project)
+
+    @property
+    def jobscount(self):
+        return len(self._jobs)
+
+    def get_jobs_count(self, project=None, options=None):
+        if options:
+            return requests.get("{}/count?{}".format(
+                self.get_jobs_url(project), options
+            ))
+
+        return requests.get("{}/count".format(self.get_jobs_url(project)))
+
+    def get_failed(self, project=None):
+        return requests.get(
+            "{}/failures".format(self.get_project_url(project)),
+        )
+
+    def add_user(self, user, password, auth=None, use_auth=True):
+        admin_auth = auth if auth else (self._adminuser, self._adminpw)
+        if not use_auth:
+            admin_auth = None
+        r = requests.post(
+            "{}/users".format(self._adminroot),
+            json={"username": user, "password": password},
+            auth=admin_auth,
+        )
+        if r.status_code == 201:
+            userid = r.json()['userid']
+            self._users.append(userid)
+        return r
+
+    def add_user_worker(self):
+        r = requests.post(
+            "{}/users".format(self._adminroot),
+            headers={'Content-Type': "application/json"},
+            json={"username": self.username, "password": self._password},
+            auth=(self._adminuser, self._adminpw),
+        )
+        assert r.status_code == 201, r.status_code
+        userid = r.json()['userid']
+        self._users.append(userid)
+        self._token = self.get_worker_token()
+        return userid
+
+    def get_worker_token(self):
+        r = requests.get(self._tokenurl, auth=self.user_auth)
         assert r.status_code == 200, r.status_code
         return r.json()['token']
 
-    @classmethod
-    def _delete_user(cls, userid):
-        requests.delete(cls._apiroot + "/admin/users/{}".format(userid),
-                        auth=(cls._adminuser, cls._adminpw))
+    def delete_users(self):
+        while self._users:
+            self.delete_user(self._users[0])
 
+    def delete_user(self, userid):
+        r = requests.delete(
+            "{}/users/{}".format(self._adminroot, userid),
+            auth=self.admin_auth,
+        )
+        self._users.remove(userid)
+        return r
 
-class BaseWithWorkerUser(BaseSystemTest):
-
-    @classmethod
-    def setUpClass(cls):
-        super(BaseWithWorkerUser, cls).setUpClass()
-        cls.worker_userid = cls._insert_worker_user()
-        cls._token = cls._get_worker_token()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(BaseWithWorkerUser, cls).tearDownClass()
-        cls._delete_user(cls.worker_userid)
-        cls._token = None
-
-
-class BaseInsertedJobs(BaseWithWorkerUser):
-
-    @classmethod
-    def setUpClass(cls):
-        super(BaseInsertedJobs, cls).setUpClass()
-        cls._insert_test_jobs()
+    def cleanup(self):
+        self.delete_projects()
+        self.delete_users()

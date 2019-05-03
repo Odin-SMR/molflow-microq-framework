@@ -1,21 +1,17 @@
 import pytest
 from selenium import webdriver
 
-from test.testbase import BaseSystemTest, system
 
+@pytest.mark.system
+class TestBrowser:
 
-@system
-@pytest.mark.usefixtures("dockercompose")
-class TestBrowser(BaseSystemTest):
+    @pytest.fixture
+    def chrome(self):
+        driver = webdriver.Chrome()
+        yield driver
+        driver.quit()
 
-    def setUp(self):
-        self.driver = webdriver.Chrome()
-
-    def tearDown(self):
-        self.driver.quit()
-
-    def test_main_page_is_up(self):
+    def test_main_page_is_up(self, microq_service, chrome):
         """Test that main page is up"""
-        driver = self.driver
-        driver.get("http://localhost:5000")
-        assert "Service" in driver.title
+        chrome.get(microq_service)
+        assert "Service" in chrome.title

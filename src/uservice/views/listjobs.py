@@ -89,7 +89,7 @@ class ListJobs(BasicProjectView):
         try:
             validate_json_job(job)
         except ValidationError as error:
-            raise BadRequest(description=error.message)
+            raise BadRequest(description=str(error))
 
         job_db = self._get_jobs_database(project)
         added_rows = self.check_for_conflicts_and_insert_one_new_job(
@@ -107,7 +107,7 @@ class ListJobs(BasicProjectView):
         try:
             validate_json_job_list(jobs)
         except ValidationError as error:
-            raise BadRequest(description=error.message)
+            raise BadRequest(description=str(error))
 
         job_db = self._get_jobs_database(project)
         added_rows = self.check_for_conflicts_and_insert_new_jobs(job_db, jobs)
@@ -144,7 +144,7 @@ class ListJobs(BasicProjectView):
                 job['added_timestamp'] = parse_datetime(now)
             rows = job_db.insert_job_if_not_duplicate(job['id'], job)
         except DBConflictError as error:
-            raise Conflict(error.message)
+            raise Conflict(error)
         return rows
 
 
@@ -158,7 +158,7 @@ def validate_json_job_list(jobs):
         try:
             validate_json_job(job)
         except ValidationError as error:
-            errors.append("Job#{}: {}".format(job_number, error.message))
+            errors.append("Job#{}: {}".format(job_number, error))
     if errors:
         raise ValidationError('\n'.join(errors))
 
