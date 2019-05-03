@@ -1,0 +1,24 @@
+---
+version: '3.4'
+
+services:
+  webapi:
+    build: .
+    ports: ["5000"]
+    environment:
+      - USERVICE_DATABASE_URI=mysql+pymysql://testuser:secret@mysqlhost/smr
+      - USERVICE_ADMIN_USER=admin
+      - USERVICE_ADMIN_PASSWORD=sqrrl
+    volumes:
+      - ./src/:/app
+    links:
+      - mysqlhost
+
+  mysqlhost:
+    build: db
+    environment:
+      - MYSQL_ROOT_PASSWORD=empty
+      - MYSQL_DATABASE=smr
+      - MYSQL_USER=testuser
+      - MYSQL_PASSWORD=secret
+    ports: ["3306"]

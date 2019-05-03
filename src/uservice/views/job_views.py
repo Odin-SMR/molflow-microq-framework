@@ -121,7 +121,11 @@ class JobClaim(BasicJobView):
         return jsonify(
             Version=version, Project=project, ID=job_id,
             Claimed=job['claimed'], ClaimedByWorker=job['worker'],
-            ClaimedAtTime=job['claimed_timestamp'].isoformat())
+            ClaimedAtTime=(
+                job['claimed_timestamp'].isoformat()
+                if job['claimed_timestamp'] else None
+            )
+        )
 
     def _put_view(self, version, project, job_id):
         """
