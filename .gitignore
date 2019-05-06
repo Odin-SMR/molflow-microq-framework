@@ -1,3 +1,7 @@
+/.tox
+/node_modules
+/HeadlessChrome*
+/TESTS-HeadlessChrome*
 *.pyc
 *.swp
 .ropeproject

@@ -1,6 +1,6 @@
--rrequirements.txt
 pytest
 pytest-docker
+pytest-coverage
 requests
 coverage
 selenium
