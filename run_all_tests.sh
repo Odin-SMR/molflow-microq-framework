@@ -4,9 +4,9 @@
 # the build master template job.
 set -e
 
-virtualenv --python=python2 env
-export VIRTUAL_ENV="${PWD}/env"
-export PATH="${PWD}/env/bin:${PATH}"
+npm install
+npm update
+npm test
+
 export PATH="/usr/lib/chromium-browser:${PATH}"
-pip install -r test-requirements.txt
-xvfb-run -a py.test --runslow --runsystem --junitxml=result.xml "$@"
+tox -- "$@"
