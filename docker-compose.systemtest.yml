@@ -15,10 +15,11 @@ services:
       - mysqlhost
 
   mysqlhost:
-    build: db
+    image: mysql:5
     environment:
       - MYSQL_ROOT_PASSWORD=empty
       - MYSQL_DATABASE=smr
       - MYSQL_USER=testuser
       - MYSQL_PASSWORD=secret
-    ports: ["3306"]
+    volumes:
+      - ./db/data_dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
