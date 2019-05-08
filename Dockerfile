@@ -8,7 +8,6 @@ run apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 copy src/ /app/
-run cd /app && python setup.py develop
 expose 5000
 workdir /app
 cmd gunicorn -w 4 -k gevent -b 0.0.0.0:5000 uservice.core.app:app

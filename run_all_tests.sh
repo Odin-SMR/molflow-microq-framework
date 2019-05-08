@@ -9,4 +9,4 @@ npm update
 npm test
 
 export PATH="/usr/lib/chromium-browser:${PATH}"
-tox -- "$@"
+tox -- --runslow --runsystem "$@"

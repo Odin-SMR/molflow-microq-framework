@@ -10,15 +10,15 @@ from random import choice
 from flask import jsonify, abort as flask_abort, make_response, request, g
 from flask.views import MethodView
 
-from utils.validate import validate_project_name
-from utils.logs import get_logger
-from utils.defs import JOB_STATES, TIME_PERIODS
-from utils import analyze_worker_output
+from ..utils.validate import validate_project_name
+from ..utils.logs import get_logger
+from ..utils.defs import JOB_STATES, TIME_PERIODS
+from ..utils import analyze_worker_output
 
-from uservice.core.users import auth
-from uservice.database.basedb import get_db as get_jobs_db
-from uservice.database.projects import get_db as get_projects_db
-from uservice.database.sqldb import SqlJobDatabase
+from ..core.users import auth
+from ..database.basedb import get_db as get_jobs_db
+from ..database.projects import get_db as get_projects_db
+from ..database.sqldb import SqlJobDatabase
 
 
 def abort(status_code, message=None):

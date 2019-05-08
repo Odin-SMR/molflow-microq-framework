@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask import g
 
-from utils.defs import JOB_STATES, TIME_PERIODS
+from ..utils.defs import JOB_STATES, TIME_PERIODS
 
 STATE_TO_TIMESTAMP = {
     JOB_STATES.available: 'added_timestamp',

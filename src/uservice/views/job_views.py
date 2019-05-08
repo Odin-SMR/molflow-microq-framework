@@ -5,11 +5,11 @@ from dateutil.parser import parse as parse_datetime
 
 from flask import jsonify, request, g
 
-from utils.defs import JOB_STATES
+from ..utils.defs import JOB_STATES
 
-from uservice.views.basic_views import abort, BasicProjectView
-from uservice.core.users import auth
-from uservice.database.basedb import STATE_TO_TIMESTAMP
+from .basic_views import abort, BasicProjectView
+from ..core.users import auth
+from ..database.basedb import STATE_TO_TIMESTAMP
 
 
 class BasicJobView(BasicProjectView):

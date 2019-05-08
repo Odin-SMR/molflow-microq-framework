@@ -4,9 +4,8 @@ from dateutil.parser import parse as parse_datetime
 
 from flask import request, jsonify, g
 
-from utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
-from uservice.views.basic_views import (
-    BasicProjectView, abort, make_pretty_project)
+from ..utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
+from .basic_views import BasicProjectView, abort, make_pretty_project
 
 
 class ProjectStatus(BasicProjectView):

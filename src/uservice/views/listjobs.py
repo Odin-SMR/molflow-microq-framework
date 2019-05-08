@@ -4,9 +4,9 @@ from werkzeug.exceptions import BadRequest, Conflict
 
 from .basic_views import (
     BasicProjectView, abort, fix_timestamp, make_pretty_job)
-from uservice.database.basedb import DBError, DBConflictError
-from uservice.database.sqldb import SqlJobDatabase
-from utils.defs import JOB_STATES
+from ..database.basedb import DBError, DBConflictError
+from ..database.sqldb import SqlJobDatabase
+from ..utils.defs import JOB_STATES
 
 
 class ListJobs(BasicProjectView):

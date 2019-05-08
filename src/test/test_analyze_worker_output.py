@@ -1,7 +1,7 @@
 from collections import Counter
 import pytest
 
-from utils import analyze_worker_output as analout
+from uservice.utils import analyze_worker_output as analout
 
 
 class TestAnalyzeWorkerOutput:
