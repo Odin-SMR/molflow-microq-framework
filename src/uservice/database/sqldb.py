@@ -8,9 +8,9 @@ from sqlalchemy.ext.declarative.base import _declarative_constructor
 from sqlalchemy import (
     Column, TIMESTAMP as DateTime, String, Text, Boolean, Float, Index)
 
-from utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
-from uservice.database.basedb import BaseJobDatabaseAPI, STATE_TO_TIMESTAMP
-from uservice.database.basesqldb import SqlDB
+from ..utils.defs import JOB_STATES, TIME_PERIODS, TIME_PERIOD_TO_DELTA
+from .basedb import BaseJobDatabaseAPI, STATE_TO_TIMESTAMP
+from .basesqldb import SqlDB
 
 MODELS = {}
 
