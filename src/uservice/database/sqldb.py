@@ -15,7 +15,7 @@ from .basesqldb import SqlDB
 MODELS = {}
 
 
-class JobBase(object):
+class JobBase:
 
     @declared_attr
     def __tablename__(cls):
@@ -61,7 +61,7 @@ def get_job_model(project):
     global MODELS, Base
     if project in MODELS:
         return MODELS[project]
-    Job = type('Job%s' % project.encode('ascii'), (Base,), {})
+    Job = type('Job{}'.format(project), (Base,), {})
     MODELS[project] = Job
     return Job
 

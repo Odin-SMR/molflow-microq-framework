@@ -7,7 +7,7 @@ from uservice.views.listjobs import (
 from test.testbase import ADMINUSER, ADMINPW
 
 
-class TestJsonJobValidation(object):
+class TestJsonJobValidation:
 
     @pytest.fixture
     def job(self):
@@ -81,7 +81,7 @@ class TestJsonJobValidation(object):
 
 
 @pytest.mark.system
-class TestAddJobs(object):
+class TestAddJobs:
     @pytest.fixture
     def session(self):
         requests_session = requests.Session()
@@ -116,7 +116,7 @@ class TestAddJobs(object):
         assert not response.ok
         expected_error = "Missing required fields: id, source_url"
         assert response.json() == {'error': expected_error}
-        assert len(session.get(project + '/jobs').json()['Jobs']) == 0
+        assert not session.get(project + '/jobs').json()['Jobs']
 
     def test_add_the_same_job_twice(self, session, project):
         job = {'id': '42', 'source_url': 'http://example.com/job'}
@@ -148,7 +148,7 @@ class TestAddJobs(object):
             'Job#2: Missing required fields: id'
         )
         assert response.json() == {'error': expected_error}
-        assert len(session.get(project + '/jobs').json()['Jobs']) == 0
+        assert not session.get(project + '/jobs').json()['Jobs']
 
     def test_add_a_list_of_jobs_with_duplicated_id(self, session, project):
         jobs = [
@@ -160,7 +160,7 @@ class TestAddJobs(object):
         assert not response.ok
         expected_error = 'Job#1: A job with id 41 already exists.'
         assert response.json() == {'error': expected_error}
-        assert len(session.get(project + '/jobs').json()['Jobs']) == 0
+        assert not session.get(project + '/jobs').json()['Jobs']
 
     def test_add_a_list_of_jobs_with_duplicates(self, session, project):
         jobs = [

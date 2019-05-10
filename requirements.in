@@ -8,7 +8,6 @@ sqlalchemy
 sqlalchemy-migrate
 pymysql
 jsonschema
-functools32
 jsl
 ConcurrentLogHandler
 python-dateutil

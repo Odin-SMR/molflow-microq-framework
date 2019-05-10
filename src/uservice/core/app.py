@@ -1,7 +1,6 @@
 from os import environ
 
 from flask import Flask, g, request, abort, jsonify, url_for, make_response
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.exceptions import HTTPException
 
 from uservice.core.users import User, auth, db
@@ -16,7 +15,8 @@ from uservice.views.site_views import (
     ListJobsHumanReadable,
     ServerStatusHumanReadable,
     ProjectStatusHumanReadable,
-    FailedHumanReadable)
+    FailedHumanReadable,
+)
 
 
 class JobServer(Flask):
@@ -144,7 +144,6 @@ app.config['SQLALCHEMY_POOL_RECYCLE'] = 600
 
 # extensions
 db.init_app(app)
-DB_INITIALIZED = False
 
 
 def _add_user(username, password):
@@ -162,26 +161,32 @@ def _add_user(username, password):
     return user.id, None
 
 
-def _init_db():
-    global DB_INITIALIZED
-    if DB_INITIALIZED:
+class LazyInitDB:
+    def __init__(self):
+        self._db_initalized = False
+
+    def __call__(self):
+        if self._db_initalized:
+            return
+        try:
+            db.create_all()
+            _add_user(
+                environ['USERVICE_ADMIN_USER'],
+                environ['USERVICE_ADMIN_PASSWORD'],
+            )
+            self._db_initalized = True
+        except Exception:
+            abort(503)
         return
-    try:
-        db.create_all()
-        _add_user(environ['USERVICE_ADMIN_USER'],
-                  environ['USERVICE_ADMIN_PASSWORD'])
-        DB_INITIALIZED = True
-    except:
-        abort(503)
 
 
-app.before_request(_init_db)
+app.before_request(LazyInitDB())
 
 
 @app.teardown_appcontext
 def close_db(error=None):
-    for db in getattr(g, 'job_databases', {}).values():
-        db.close()
+    for job_db in getattr(g, 'job_databases', {}).values():
+        job_db.close()
 
 
 # error handling
@@ -218,26 +223,26 @@ def new_user():
     if not user_id:
         abort(400)
     return (jsonify({'username': username, 'userid': user_id}), 201,
-            {'Location': url_for('get_user', id=user_id, _external=True)})
+            {'Location': url_for('get_user', uid=user_id, _external=True)})
 
 
-@app.route('/rest_api/admin/users/<int:id>')
+@app.route('/rest_api/admin/users/<int:uid>')
 @auth.login_required
-def get_user(id):
+def get_user(uid):
     if g.user.username != environ['USERVICE_ADMIN_USER']:
         abort(403)
-    user = User.query.get(id)
+    user = User.query.get(uid)
     if not user:
         abort(404)
     return jsonify({'username': user.username})
 
 
-@app.route('/rest_api/admin/users/<int:id>', methods=['DELETE'])
+@app.route('/rest_api/admin/users/<int:uid>', methods=['DELETE'])
 @auth.login_required
-def delete_user(id):
+def delete_user(uid):
     if g.user.username != environ['USERVICE_ADMIN_USER']:
         abort(403)
-    user = User.query.get(id)
+    user = User.query.get(uid)
     if not user:
         abort(404)
     db.session.delete(user)

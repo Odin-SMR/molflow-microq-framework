@@ -1,9 +1,9 @@
 """Base classes for tests of uService"""
 import os
 import unittest
-import requests
+
 import pytest
-from types import StringTypes
+import requests
 
 
 class _Any:
@@ -13,7 +13,7 @@ class _Any:
 
 class _AnyString:
     def __eq__(self, other):
-        return isinstance(other, StringTypes)
+        return isinstance(other, str)
 
 
 ANY = _Any()

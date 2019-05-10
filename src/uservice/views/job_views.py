@@ -79,8 +79,9 @@ class JobStatus(BasicJobView):
         if not db.job_exists(job_id):
             return abort(404)
         db.update_job(job_id, **data)
-        self.log.info("Status of job {0} was updated by {1}.".format(
-            job_id, g.user.username))
+        self.log.info("Status of job {} was updated by {}.".format(
+            job_id, g.user.username
+        ))
         return jsonify(Version=version, Project=project, ID=job_id,
                        Call="PUT", Status=request.json['Status'])
 

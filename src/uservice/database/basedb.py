@@ -28,7 +28,7 @@ class DBConflictError(DBError):
     pass
 
 
-class BaseJobDatabaseAPI(object):
+class BaseJobDatabaseAPI:
     """Base API to a database.
 
     Inherit and implement:
@@ -69,7 +69,7 @@ class BaseJobDatabaseAPI(object):
 
     def insert_job_if_not_duplicate(self, job_id, job_data):
         if self.job_exists(job_id):
-            existing_job = self.get_job(job_id, job_data.keys())
+            existing_job = self.get_job(job_id, list(job_data.keys()))
             if job_data == existing_job:
                 pass
             else:
@@ -233,7 +233,7 @@ class InMemoryJobDatabase(BaseJobDatabaseAPI):
             job = self.db.get(job_id)
             jobs = [job] if job else []
         else:
-            jobs = self.db.values()
+            jobs = list(self.db.values())
         if match:
             def matches(data, tomatch):
                 for k, v in tomatch.items():
@@ -249,7 +249,7 @@ class InMemoryJobDatabase(BaseJobDatabaseAPI):
     def _update_job(self, job_id, data):
         if not self.job_exists(job_id):
             raise DBError('Job does not exist')
-        changed = any([self.db[job_id].get(k) != v for k, v in data.items()])
+        changed = any(self.db[job_id].get(k) != v for k, v in data.items())
         self.db[job_id].update(data)
         return changed
 

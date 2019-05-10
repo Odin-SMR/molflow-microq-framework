@@ -1,7 +1,10 @@
-import urllib
 from datetime import datetime, timedelta
-import requests
+import urllib.request
+import urllib.parse
+import urllib.error
+
 import pytest
+import requests
 
 from test.testbase import TEST_URL, ANY, ANY_STRING
 
@@ -295,16 +298,53 @@ class TestListJobs:
         ]
         for start, end, status, expected in tests:
             param = [('status', status), ('start', start), ('end', end)]
-            r = myapi.get_project_jobs(options=urllib.urlencode(param))
+            r = myapi.get_project_jobs(options=urllib.parse.urlencode(param))
             r.raise_for_status()
             assert len(r.json()["Jobs"]) == expected
 
     def test_analyze_failed_jobs(self, myapi):
+        # Locate a/the failed job
+        r = myapi.get_failed()
+        r.raise_for_status()
+        data = r.json()
+        jobid, _ = data['Jobs'].popitem()
+
+        # Figure out how to post output to it
+        r = myapi.get_project_jobs()
+        r.raise_for_status()
+        job = [j for j in r.json()['Jobs'] if j['Id'] == jobid].pop()
+
+        # Post output
+        r = requests.put(
+            job["URLS"]["URL-Output"],
+            json={"Output": "This is a line\nAnd next...\nAnd next..."},
+            auth=myapi.auth,
+        )
+        r.raise_for_status()
+
+        # Get failed jobs again now with output
+        r = myapi.get_failed()
+        r.raise_for_status()
+        data = r.json()
+        assert isinstance(data['Lines'], list)
+        assert data['Lines'] == [
+            {
+                'CommonLines': [
+                    {'Line': 'This is a line', 'Score': 0.0},
+                    {'Line': 'And next...', 'Score': 0.0}
+                ],
+                'Jobs': ['4'],
+                'Line': 'This is a line',
+                'Score': 0.0,
+            }
+        ]
+
+    def test_analyze_failed_jobs_old(self, myapi):
         r = myapi.get_failed(project="QSMRVDS")
         r.raise_for_status()
         data = r.json()
         assert isinstance(data['Lines'], list)
-        assert len(data['Lines']) > 0
+        assert data['Lines']
 
 
 def get_project(api, project='project'):
@@ -399,7 +439,7 @@ class TestProjectsPrio:
         )
         assert r.status_code == 204
         assert get_project(api)['PrioScore'] == pytest.approx(
-            prio_deadline_passed / 100, abs=0.05
+            prio_deadline_passed / 100., abs=0.05
         )
 
         # Prio should be zero when no jobs are available
@@ -564,7 +604,6 @@ class TestJobViews:
         r = api.fetch_project_job()
         r.raise_for_status()
         job = r.json()
-        print(job["Job"]["URLS"])
 
         assert self._get_nr_claimed(api) == 0
 
@@ -778,7 +817,7 @@ class TestCountJobs:
             ('start', '2000-01-01 10:00'),
             ('end', '2000-01-01 11:00'),
         ]
-        r = apiwithjobs.get_jobs_count(options=urllib.urlencode(param))
+        r = apiwithjobs.get_jobs_count(options=urllib.parse.urlencode(param))
         r.raise_for_status()
 
         projecturl = apiwithjobs.get_project_url()
