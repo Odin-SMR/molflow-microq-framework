@@ -28,8 +28,10 @@ class ProjectStatus(BasicProjectView):
         project_data = make_pretty_project(project_data)
 
         jobs_db = self._get_jobs_database(project)
-        status = {state.title(): count
-                  for state, count in jobs_db.count_jobs().items()}
+        status = {
+            state.title(): count
+            for state, count in jobs_db.count_jobs().items()
+        }
 
         # TODO: ETA will not be very reliable when there are more than one
         #       active project.
@@ -86,9 +88,8 @@ class ProjectStatus(BasicProjectView):
             db.insert_project(project, g.user.username, **data)
             self._get_jobs_database(project)
             return jsonify(Version=version, ID=project), 201
-        else:
-            db.update_project(project, **data)
-            return jsonify(Version=version, ID=project), 204
+        db.update_project(project, **data)
+        return jsonify(Version=version, ID=project), 204
 
     def _delete_view(self, version, project):
         """Used to delete project"""

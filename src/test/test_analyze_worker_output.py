@@ -141,14 +141,18 @@ class TestAnalyzeWorkerOutput:
 
     @pytest.mark.parametrize('orig,expected', [
 
-        (u'This is a test',
-            'This is a test'),
-
-        (u'This is a http://test.com/help?no thank you',
-            u'This is a http://test.com/help?'),
-
-        (u'This is a http://test.com/help no thank you',
-            u'This is a http://test.com/help no thank you'),
+        (
+            u'This is a test',
+            'This is a test',
+        ),
+        (
+            u'This is a http://test.com/help?no thank you',
+            u'This is a http://test.com/help?',
+        ),
+        (
+            u'This is a http://test.com/help no thank you',
+            u'This is a http://test.com/help no thank you',
+        ),
     ])
     def test_truncationbehaviour(self, orig, expected):
 

@@ -6,7 +6,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 _engine = _db_session = None
 
 
-class SqlDB(object):
+class SqlDB:
 
     def __init__(self, model):
         global _engine, _db_session

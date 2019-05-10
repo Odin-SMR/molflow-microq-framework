@@ -48,7 +48,7 @@ class Project(Base):
     processing_time = Column(Float, default=0)
 
 
-class ProjectsDB(object):
+class ProjectsDB:
 
     # These fields are stored as json strings in the database:
     JSON_FIELDS = ['environment']
@@ -108,8 +108,9 @@ class ProjectsDB(object):
                 p['nr_finished'] or p['nr_failed']):
             mean_processing_time = ProjectsDB.DEFAULT_MEAN_PROCESSING_TIME
         else:
-            mean_processing_time = p['processing_time'] / (
-                p['nr_finished'] + p['nr_failed'])
+            mean_processing_time = (
+                p['processing_time'] / (p['nr_finished'] + p['nr_failed'])
+            )
         numerator = (p['nr_added'] - p['nr_claimed']) * mean_processing_time
         if p['deadline'] < now:
             return numerator
@@ -130,7 +131,7 @@ class ProjectsDB(object):
         if fields:
             fields = [self.db.model.__table__.c[field] for field in fields]
         else:
-            fields = self.db.model.__table__.c.values()
+            fields = list(self.db.model.__table__.c.values())
 
         query = select(
             fields,
@@ -152,11 +153,14 @@ class ProjectsDB(object):
         project = self.db.model.query.filter_by(id=project_id).first()
         if not project:
             return
-        project_dict = {c.name: self._getattr_from_column_name(project, c.name)
-                        for c in project.__table__.columns}
+        project_dict = {
+            c.name: self._getattr_from_column_name(project, c.name)
+            for c in project.__table__.columns
+        }
         if fields:
             project_dict = {
-                k: v for k, v in project_dict.items() if k in fields}
+                k: v for k, v in project_dict.items() if k in fields
+            }
         return self.decode_json(project_dict)
 
     def update_project(self, project_id, **data):

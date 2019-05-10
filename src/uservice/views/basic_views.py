@@ -1,12 +1,14 @@
 """ Basic views for REST api
 """
-import urllib
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
 from operator import itemgetter
-from dateutil.parser import parse as parse_datetime
 from random import choice
+import urllib.request
+import urllib.parse
+import urllib.error
 
+from dateutil.parser import parse as parse_datetime
 from flask import jsonify, abort as flask_abort, make_response, request, g
 from flask.views import MethodView
 
@@ -136,7 +138,7 @@ class BasicProjectView(BasicView):
             abort(404)
 
 
-class FetchJobBase(object):
+class FetchJobBase:
     """Base class that can fetch an unclaimed job and format it
     for the workers.
     """
@@ -370,14 +372,17 @@ class CountJobs(BasicProjectView):
                          ('end', state_count['end_time'].isoformat())]
                 count['URLS']['URL-Jobs%s' % job_state.title()] = (
                     '{}rest_api/v4/{}/jobs?{}'.format(
-                        request.url_root, project, urllib.urlencode(param)))
+                        request.url_root, project,
+                        urllib.parse.urlencode(param),
+                    )
+                )
                 # TODO: Make this general for all time periods
                 if period == TIME_PERIODS.daily:
                     param[0] = ('period', TIME_PERIODS.hourly)
                     count['URLS']['URL-Zoom'] = (
                         '{}rest_api/v4/{}/jobs/count?{}'.format(
                             request.url_root, project,
-                            urllib.urlencode(param)))
+                            urllib.parse.urlencode(param)))
 
         def add_workers_count(counts):
             worker_counts = db.count_jobs_per_time_period(
@@ -391,7 +396,10 @@ class CountJobs(BasicProjectView):
                          ('end', worker_count['end_time'].isoformat())]
                 count['URLS']['URL-ActiveWorkers'] = (
                     '{}rest_api/v4/{}/workers?{}'.format(
-                        request.url_root, project, urllib.urlencode(param)))
+                        request.url_root, project,
+                        urllib.parse.urlencode(param),
+                    )
+                )
 
         def get_default_count():
             return {'Period': None, 'JobsClaimed': 0, 'JobsFailed': 0,
@@ -403,7 +411,7 @@ class CountJobs(BasicProjectView):
         add_state_count(JOB_STATES.finished, counts)
         add_workers_count(counts)
 
-        counts = counts.values()
+        counts = list(counts.values())
         counts.sort(key=itemgetter('Period'))
 
         return jsonify(Version=version, Project=project,

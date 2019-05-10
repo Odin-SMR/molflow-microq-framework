@@ -174,5 +174,5 @@ def validate_json_job(job):
         raise ValidationError(
             'These fields do not exist or are for internal use: {}'
             .format(', '.join(unallowed)))
-    if not (isinstance(job['id'], str) or isinstance(job['id'], unicode)):
+    if not isinstance(job['id'], str):
         raise ValidationError("Expected string in field 'id'")
