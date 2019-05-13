@@ -114,8 +114,12 @@ class TestAddJobs:
         job = {}
         response = session.post(project + '/jobs', json=job)
         assert not response.ok
-        expected_error = "Missing required fields: id, source_url"
-        assert response.json() == {'error': expected_error}
+        responsejson = response.json()
+        assert 'error' in responsejson
+        err = responsejson['error']
+        assert err.startswith("Missing required fields:")
+        _, missing = err.split(':', 1)
+        assert {v.strip() for v in missing.split(',')} == {'id', 'source_url'}
         assert not session.get(project + '/jobs').json()['Jobs']
 
     def test_add_the_same_job_twice(self, session, project):
