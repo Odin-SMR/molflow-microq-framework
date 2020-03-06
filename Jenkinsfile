@@ -5,11 +5,11 @@ node {
         sh "npm update"
         sh "npm test"
     }
-    stage('Test') {
-        sh "tox -- --runslow --runsystem"
-    }
     stage('Build') {
         sh "docker build -t docker2.molflow.com/devops/microq ."
+    }
+    stage('Test') {
+        sh "tox -- --runslow --runsystem"
     }
     stage("Push") {
         if (env.GIT_BRANCH == 'origin/master') {
