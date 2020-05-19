@@ -21,7 +21,7 @@ pytest==4.4.1             # via -r test-requirements.in, pytest-cov
 requests==2.20.1          # via -r test-requirements.in
 selenium==3.141.0         # via -r test-requirements.in
 six==1.11.0               # via more-itertools, pytest
-urllib3==1.22             # via requests, selenium
+urllib3==1.24.2           # via requests, selenium
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
