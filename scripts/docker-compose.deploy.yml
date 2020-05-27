@@ -1,7 +1,7 @@
 version: "3"
 services:
     uservice:
-        image: docker2.molflow.com/devops/microq:latest
+        image: odinsmr/microq:latest
         logging:
             driver: "json-file"
             options:
