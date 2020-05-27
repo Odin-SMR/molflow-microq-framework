@@ -1,4 +1,5 @@
 node {
+    def microqImage
     checkout scm
     stage('Test GUI') {
         sh "npm install"
@@ -6,14 +7,20 @@ node {
         sh "npm test"
     }
     stage('Build') {
-        sh "docker build -t docker2.molflow.com/devops/microq ."
+        microqImage = docker.build("odinsmr/microq")
     }
     stage('Test') {
         sh "tox -- --runslow --runsystem"
     }
-    stage("Push") {
-        if (env.GIT_BRANCH == 'origin/master') {
-            sh "docker push docker2.molflow.com/devops/microq"
+    stage('Cleanup') {
+      sh "rm -r .tox"
+    }
+    if (env.BRANCH_NAME == 'master') {
+      stage('push') {
+        withDockerRegistry([ credentialsId: "dockerhub-molflowbot", url: "" ]) {
+           microqImage.push(env.BUILD_TAG)
+           microqImage.push('latest')
         }
+      }
     }
 }
