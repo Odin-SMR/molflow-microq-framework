@@ -1,6 +1,8 @@
 node {
     def microqImage
-    checkout scm
+    stage('git') {
+        checkout scm
+    }
     stage('Test GUI') {
         sh "npm install"
         sh "npm update"
