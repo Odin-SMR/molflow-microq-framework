@@ -13,6 +13,8 @@
   "author": "Molflow",
   "license": "ISC",
   "devDependencies": {
+    "chromedriver": "^87.0.5",
+    "chromium": "^3.0.2",
     "eslint": "^5.10.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.14.0",
