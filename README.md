@@ -127,10 +127,12 @@ Result is some sort of status confirmation reporting success or failure.
 
 
 #### /rest/jobs/<id>/data/
+
 URL for getting the data (or URLs to data) needed to start processing.
 
 
 #### /rest/jobs/<id>/claim/
+
 URL for claiming a job. Some sort of authentication might be implemeted, such
 as only allowing claims where a proper key is supplied via e.g. ?key=.
 
@@ -144,6 +146,7 @@ be claimed, otherwise some negative confirmation/http status code.
 
 
 #### /rest/jobs/<id>/lock/
+
 URL for locking a job, e.g. when claimed. Some sort of authentication might be
 implemeted, such as only allowing locking where a proper key is supplied via
 e.g. ?key=.
@@ -154,6 +157,7 @@ Result is some sort of status confirmation reporting success or failure.
 
 
 #### /rest/jobs/<id>/unlock/
+
 URL for unlocking a job, e.g. when the Worker that claimed it is suspected to
 have crashed. Some sort of authentication might be implemeted, such as only
 allowing claims where a proper key is supplied via e.g. ?key=.
@@ -164,6 +168,7 @@ Result is some sort of status confirmation reporting success or failure.
 
 
 #### /rest/jobs/<id>/deliver/
+
 URL for delivering a job, e.g. when claimed. Some sort of authentication might
 be implemeted, such as only allowing claims where a proper key is supplied via
 e.g. ?key=.

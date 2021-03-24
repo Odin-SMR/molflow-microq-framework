@@ -7,9 +7,18 @@ class TestBrowser:
 
     @pytest.fixture
     def chrome(self):
-        driver = webdriver.Chrome()
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.binary_location = (
+            './node_modules/chromium/lib/chromium/chrome-linux/chrome'
+        )
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        driver = webdriver.Chrome(
+            './node_modules/chromedriver/bin/chromedriver',
+            options=chrome_options
+        )
+        driver.implicitly_wait(4)
         yield driver
-        driver.quit()
 
     def test_main_page_is_up(self, microq_service, chrome):
         """Test that main page is up"""

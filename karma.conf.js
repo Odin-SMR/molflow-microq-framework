@@ -1,6 +1,9 @@
 // Karma configuration
 // Generated on Tue May 30 2017 17:11:30 GMT+0200 (CEST)
 //
+
+process.env.CHROME_BIN = "node_modules/chromium/lib/chromium/chrome-linux/chrome";
+
 module.exports = (config) => {
     config.set({
 
