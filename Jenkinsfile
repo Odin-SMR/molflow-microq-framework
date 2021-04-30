@@ -1,4 +1,4 @@
-node {
+node("fukushima") {
     def microqImage
     stage('git') {
         checkout scm
