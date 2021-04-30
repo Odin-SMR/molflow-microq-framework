@@ -4,23 +4,51 @@
 #
 #    pip-compile --output-file=test-requirements.txt test-requirements.in
 #
-attrs==19.3.0             # via pytest, pytest-docker
-certifi==2020.4.5.1       # via requests
-chardet==3.0.4            # via requests
-coverage==5.1             # via -r test-requirements.in, pytest-cov
-idna==2.9                 # via requests
-more-itertools==8.3.0     # via pytest
-packaging==20.4           # via pytest
-pluggy==0.13.1            # via pytest
-py==1.8.1                 # via pytest
-pyparsing==2.4.7          # via packaging
-pytest-cov==2.9.0         # via pytest-cover
-pytest-cover==3.0.0       # via pytest-coverage
-pytest-coverage==0.0      # via -r test-requirements.in
-pytest-docker==0.7.2      # via -r test-requirements.in
-pytest==5.4.2             # via -r test-requirements.in, pytest-cov
-requests==2.23.0          # via -r test-requirements.in
-selenium==3.141.0         # via -r test-requirements.in
-six==1.15.0               # via packaging
-urllib3==1.25.9           # via requests, selenium
-wcwidth==0.1.9            # via pytest
+attrs==19.3.0
+    # via
+    #   pytest
+    #   pytest-docker
+certifi==2020.4.5.1
+    # via requests
+chardet==3.0.4
+    # via requests
+coverage==5.1
+    # via
+    #   -r test-requirements.in
+    #   pytest-cov
+idna==2.9
+    # via requests
+iniconfig==1.1.1
+    # via pytest
+packaging==20.4
+    # via pytest
+pluggy==0.13.1
+    # via pytest
+py==1.10.0
+    # via pytest
+pyparsing==2.4.7
+    # via packaging
+pytest-cov==2.9.0
+    # via pytest-cover
+pytest-cover==3.0.0
+    # via pytest-coverage
+pytest-coverage==0.0
+    # via -r test-requirements.in
+pytest-docker==0.7.2
+    # via -r test-requirements.in
+pytest==6.2.3
+    # via
+    #   -r test-requirements.in
+    #   pytest-cov
+requests==2.23.0
+    # via -r test-requirements.in
+selenium==3.141.0
+    # via -r test-requirements.in
+six==1.15.0
+    # via packaging
+toml==0.10.2
+    # via pytest
+urllib3==1.25.9
+    # via
+    #   requests
+    #   selenium
