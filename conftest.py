@@ -59,3 +59,14 @@ def microq_service(docker_ip, docker_services):
         check=lambda: is_responsive(url),
     )
     return url
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "slow: mark test as slow, use --runslow to run",
+    )
+    config.addinivalue_line(
+        "markers",
+        "system: mark test as system, use --runsystem to run",
+    )
